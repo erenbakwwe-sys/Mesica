@@ -1,0 +1,5 @@
+{
+  "name": "Chef Taus Kitchen",
+  "description": "Digital Restaurant Experience Demo",
+  "requestFramePermissions": ["camera"]
+}

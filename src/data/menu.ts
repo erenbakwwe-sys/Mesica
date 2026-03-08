@@ -1,0 +1,42 @@
+export const MENU_ITEMS = [
+  {
+    id: 'tacos',
+    name: 'Tacos',
+    description: 'Meksika baharatları ile hazırlanmış çıtır taco.',
+    price: 360,
+    image: 'https://picsum.photos/seed/mexicantacos/800/600',
+    category: 'Ana Yemek',
+  },
+  {
+    id: 'burrito',
+    name: 'Burrito',
+    description: 'Et, sebze ve soslarla doldurulmuş tortilla dürümü.',
+    price: 420,
+    image: 'https://picsum.photos/seed/mexicanburrito/800/600',
+    category: 'Ana Yemek',
+  },
+  {
+    id: 'quesadilla',
+    name: 'Quesadilla',
+    description: 'Eritilmiş peynir ve tortilla ile hazırlanan klasik Meksika lezzeti.',
+    price: 300,
+    image: 'https://picsum.photos/seed/quesadilla/800/600',
+    category: 'Ana Yemek',
+  },
+  {
+    id: 'guacamole',
+    name: 'Guacamole',
+    description: 'Taze avokado ve lime ile hazırlanan sos.',
+    price: 180,
+    image: 'https://picsum.photos/seed/guacamole/800/600',
+    category: 'Başlangıç',
+  },
+  {
+    id: 'nachos',
+    name: 'Nachos',
+    description: 'Peynir soslu çıtır mısır cipsleri.',
+    price: 240,
+    image: 'https://picsum.photos/seed/nachos/800/600',
+    category: 'Başlangıç',
+  },
+];
