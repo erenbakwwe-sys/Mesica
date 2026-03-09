@@ -45,16 +45,11 @@ export function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-10 flex flex-col gap-4 sm:flex-row"
+            className="mt-10 flex flex-col gap-4 sm:flex-row justify-center"
           >
             <Link to="/menu">
-              <Button size="lg" className="w-full sm:w-auto text-base h-14 px-8 bg-orange-500 hover:bg-orange-400 text-white border-none">
+              <Button size="lg" className="w-full sm:w-auto text-base h-14 px-12 bg-orange-500 hover:bg-orange-400 text-white border-none">
                 Menüyü Gör
-              </Button>
-            </Link>
-            <Link to="/order">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base h-14 px-8 border-orange-200 text-orange-50 hover:bg-orange-900/50">
-                QR Sipariş Demosu
               </Button>
             </Link>
           </motion.div>

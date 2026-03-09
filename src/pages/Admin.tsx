@@ -14,6 +14,7 @@ export function Admin() {
   const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'waiter'>('orders');
   
   const activeWaiterCalls = waiterCalls ? waiterCalls.filter(c => !c.resolved) : [];
+  const newOrdersCount = orders ? orders.filter(o => o.status === 'Yeni').length : 0;
 
   useEffect(() => {
     const loggedIn = sessionStorage.getItem('casa_mexicana_admin_logged_in');
@@ -77,8 +78,15 @@ export function Admin() {
               onClick={() => setActiveTab('orders')}
               className={activeTab === 'orders' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}
             >
-              <ListOrdered className="mr-2 h-4 w-4" />
-              Siparişler
+              <div className="relative flex items-center">
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Siparişler
+                {newOrdersCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {newOrdersCount}
+                  </span>
+                )}
+              </div>
             </Button>
             <Button 
               variant={activeTab === 'waiter' ? 'default' : 'ghost'} 
@@ -212,6 +220,19 @@ export function Admin() {
                       </li>
                     ))}
                   </ul>
+                  
+                  <div className="mt-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="text-slate-500">Ödeme Yöntemi:</span>
+                      <span className="font-medium text-slate-900">{order.paymentMethod || 'Belirtilmedi'}</span>
+                    </div>
+                    {order.note && (
+                      <div className="text-sm bg-orange-50 text-orange-800 p-3 rounded-lg border border-orange-100">
+                        <span className="font-semibold block mb-1">Sipariş Notu:</span>
+                        {order.note}
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
                 <CardFooter className="flex-col items-stretch border-t border-slate-100 bg-slate-50/50 p-4 gap-4">
                   <div className="flex items-center justify-between font-semibold text-slate-900">

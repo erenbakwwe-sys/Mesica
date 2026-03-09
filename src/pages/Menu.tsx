@@ -1,13 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Minus, ShoppingCart } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Plus, Minus, ShoppingCart, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export function Menu() {
-  const { menuItems, cart, addToCart, removeFromCart } = useCart();
+  const { menuItems, cart, addToCart, removeFromCart, total } = useCart();
   const [activeCategory, setActiveCategory] = useState<string>('Tümü');
+  const navigate = useNavigate();
 
   const categories = ['Tümü', ...Array.from(new Set(menuItems.map((item) => item.category)))];
 
@@ -15,13 +17,15 @@ export function Menu() {
     ? menuItems 
     : menuItems.filter((item) => item.category === activeCategory);
 
+  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-8"
+      className="flex flex-col gap-8 pb-24" // Added pb-24 for the sticky bottom bar
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -110,6 +114,32 @@ export function Menu() {
           );
         })}
       </div>
+
+      <AnimatePresence>
+        {cart.length > 0 && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white border-t shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
+          >
+            <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <span className="text-sm text-slate-500 font-medium">{cartItemCount} ürün</span>
+                <span className="text-xl font-bold text-orange-600">₺{total.toFixed(2)}</span>
+              </div>
+              <Button 
+                size="lg" 
+                className="rounded-full bg-orange-600 hover:bg-orange-700 text-white px-8"
+                onClick={() => navigate('/order')}
+              >
+                Sepete Git
+                <ChevronRight className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

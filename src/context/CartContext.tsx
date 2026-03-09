@@ -36,6 +36,7 @@ export interface CartItem {
 }
 
 export type OrderStatus = 'Yeni' | 'Hazırlanıyor' | 'Hazır' | 'Teslim Edildi';
+export type PaymentMethod = 'Nakit' | 'Kart';
 
 export interface WaiterCall {
   id: string;
@@ -51,6 +52,8 @@ export interface Order {
   total: number;
   status: OrderStatus;
   createdAt: Date;
+  paymentMethod: PaymentMethod;
+  note?: string;
 }
 
 enum OperationType {
@@ -100,7 +103,7 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   orders: Order[];
-  placeOrder: (table: string) => void;
+  placeOrder: (table: string, paymentMethod: PaymentMethod, note?: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   callWaiter: (table: string) => void;
   waiterCalls: WaiterCall[];
@@ -275,7 +278,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const placeOrder = async (table: string) => {
+  const placeOrder = async (table: string, paymentMethod: PaymentMethod, note?: string) => {
     if (cart.length === 0) return;
     
     const newOrder = {
@@ -284,6 +287,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       total,
       status: 'Yeni',
       createdAt: serverTimestamp(),
+      paymentMethod,
+      note: note || '',
     };
     
     try {
