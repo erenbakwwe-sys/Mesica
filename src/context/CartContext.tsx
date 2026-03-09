@@ -2,6 +2,21 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 import { MENU_ITEMS as INITIAL_MENU_ITEMS } from '../data/menu';
 import { playSound } from '../lib/sounds';
 import { toast } from 'sonner';
+import { db, auth } from '../firebase';
+import { 
+  collection, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  setDoc,
+  getDocs,
+  getDocFromServer
+} from 'firebase/firestore';
 
 export interface MenuItem {
   id: string;
@@ -38,6 +53,43 @@ export interface Order {
   createdAt: Date;
 }
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
 interface CartContextType {
   menuItems: MenuItem[];
   addMenuItem: (item: MenuItem) => void;
@@ -58,142 +110,138 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const savedMenu = localStorage.getItem('casa_mexicana_menu');
-    if (savedMenu) {
-      try {
-        const parsedMenu = JSON.parse(savedMenu);
-        if (Array.isArray(parsedMenu)) {
-          return parsedMenu;
-        }
-      } catch (e) {
-        console.error("Failed to parse menu from localStorage", e);
-      }
-    }
-    return INITIAL_MENU_ITEMS;
-  });
-
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  
-  const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>(() => {
-    const saved = localStorage.getItem('casa_mexicana_waiter_calls');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.map((c: any) => ({ ...c, time: new Date(c.time) }));
-      } catch (e) {
-        console.error("Failed to parse waiter calls", e);
-      }
-    }
-    return [];
-  });
+  const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
 
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const savedOrders = localStorage.getItem('casa_mexicana_orders');
-    if (savedOrders) {
-      try {
-        const parsed = JSON.parse(savedOrders);
-        return parsed.map((o: any) => ({
-          ...o,
-          createdAt: new Date(o.createdAt)
-        }));
-      } catch (e) {
-        console.error("Failed to parse orders from localStorage", e);
-      }
-    }
-    return [];
-  });
-
-  // Save menu items to localStorage whenever they change
+  // Test Connection
   useEffect(() => {
-    try {
-      localStorage.setItem('casa_mexicana_menu', JSON.stringify(menuItems));
-    } catch (e) {
-      console.error("Failed to save menu to localStorage", e);
-      toast.error("Depolama alanı dolu. Lütfen daha küçük resimler kullanın veya bazı ürünleri silin.");
-    }
-  }, [menuItems]);
-
-  const addMenuItem = (item: MenuItem) => {
-    setMenuItems((prev) => [...prev, item]);
-    toast.success(`${item.name} menüye eklendi!`);
-  };
-
-  const removeMenuItem = (itemId: string) => {
-    setMenuItems((prev) => prev.filter(item => item.id !== itemId));
-    setCart((prev) => prev.filter(item => item.id !== itemId));
-    toast.success('Ürün menüden başarıyla silindi.');
-  };
-
-  // Listen for storage events to sync across tabs
-  useEffect(() => {
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'casa_mexicana_orders' && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          const formatted = parsed.map((o: any) => ({
-            ...o,
-            createdAt: new Date(o.createdAt)
-          }));
-          
-          // Check for new orders or status changes to play sounds
-          setOrders(prev => {
-            // Find new orders
-            const newOrders = formatted.filter((fo: Order) => !prev.some(po => po.id === fo.id));
-            if (newOrders.length > 0) {
-              playSound('new_order');
-              toast.success(`Yeni sipariş geldi! (${newOrders[0].table})`);
-            } else {
-              // Check for status changes
-              formatted.forEach((fo: Order) => {
-                const existing = prev.find(po => po.id === fo.id);
-                if (existing && existing.status !== fo.status) {
-                  if (fo.status === 'Hazırlanıyor') {
-                    playSound('preparing');
-                    toast.info(`Sipariş hazırlanıyor (${fo.table})`);
-                  } else if (fo.status === 'Hazır') {
-                    playSound('ready');
-                    toast.success(`Sipariş hazır! (${fo.table})`);
-                  } else if (fo.status === 'Teslim Edildi') {
-                    playSound('delivered');
-                    toast(`Sipariş teslim edildi (${fo.table})`);
-                  }
-                }
-              });
-            }
-            return formatted;
-          });
-        } catch (e) {
-          console.error("Failed to parse orders from storage event", e);
-        }
-      } else if (e.key === 'casa_mexicana_waiter_calls' && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          const formatted = parsed.map((c: any) => ({ ...c, time: new Date(c.time) }));
-          setWaiterCalls(prev => {
-            const newCalls = formatted.filter((fc: WaiterCall) => 
-              !fc.resolved && !prev.some(pc => pc.id === fc.id)
-            );
-            if (newCalls.length > 0) {
-              playSound('waiter');
-              toast.warning(`Garson çağrıldı: ${newCalls[0].table}`);
-            }
-            return formatted;
-          });
-        } catch (e) {
-          console.error("Failed to parse waiter calls from storage event", e);
+    async function testConnection() {
+      try {
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
         }
       }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    }
+    testConnection();
   }, []);
 
-  // Save orders to localStorage whenever they change
+  // Sync Menu
   useEffect(() => {
-    localStorage.setItem('casa_mexicana_orders', JSON.stringify(orders));
-  }, [orders]);
+    const q = query(collection(db, 'menu'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty && !localStorage.getItem('casa_mexicana_menu_seeded')) {
+        localStorage.setItem('casa_mexicana_menu_seeded', 'true');
+        // Populate initial menu if empty
+        INITIAL_MENU_ITEMS.forEach(async (item) => {
+          try {
+            await setDoc(doc(db, 'menu', item.id), item);
+          } catch (e) {
+            handleFirestoreError(e, OperationType.WRITE, 'menu');
+          }
+        });
+      } else {
+        localStorage.setItem('casa_mexicana_menu_seeded', 'true');
+        const items = snapshot.docs.map(doc => doc.data() as MenuItem);
+        setMenuItems(items);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'menu');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Orders
+  useEffect(() => {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const formatted = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          createdAt: data.createdAt?.toDate() || new Date()
+        } as Order;
+      });
+
+      setOrders(prev => {
+        const newOrders = formatted.filter(fo => !prev.some(po => po.id === fo.id));
+        if (newOrders.length > 0 && prev.length > 0) {
+          playSound('new_order');
+          toast.success(`Yeni sipariş geldi! (${newOrders[0].table})`);
+        } else {
+          formatted.forEach(fo => {
+            const existing = prev.find(po => po.id === fo.id);
+            if (existing && existing.status !== fo.status) {
+              if (fo.status === 'Hazırlanıyor') {
+                playSound('preparing');
+                toast.info(`Sipariş hazırlanıyor (${fo.table})`);
+              } else if (fo.status === 'Hazır') {
+                playSound('ready');
+                toast.success(`Sipariş hazır! (${fo.table})`);
+              } else if (fo.status === 'Teslim Edildi') {
+                playSound('delivered');
+                toast(`Sipariş teslim edildi (${fo.table})`);
+              }
+            }
+          });
+        }
+        return formatted;
+      });
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'orders');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Waiter Calls
+  useEffect(() => {
+    const q = query(collection(db, 'waiter_calls'), orderBy('time', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const formatted = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          time: data.time?.toDate() || new Date()
+        } as WaiterCall;
+      });
+
+      setWaiterCalls(prev => {
+        const newCalls = formatted.filter(fc => !fc.resolved && !prev.some(pc => pc.id === fc.id));
+        if (newCalls.length > 0 && prev.length > 0) {
+          playSound('waiter');
+          toast.warning(`Garson çağrıldı: ${newCalls[0].table}`);
+        }
+        return formatted;
+      });
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'waiter_calls');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const addMenuItem = async (item: MenuItem) => {
+    try {
+      await setDoc(doc(db, 'menu', item.id), item);
+      toast.success(`${item.name} menüye eklendi!`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'menu');
+    }
+  };
+
+  const removeMenuItem = async (itemId: string) => {
+    try {
+      await deleteDoc(doc(db, 'menu', itemId));
+      setCart((prev) => prev.filter(item => item.id !== itemId));
+      toast.success('Ürün menüden başarıyla silindi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'menu');
+    }
+  };
 
   const addToCart = (itemId: string) => {
     setCart((prev) => {
@@ -227,64 +275,67 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const placeOrder = (table: string) => {
+  const placeOrder = async (table: string) => {
     if (cart.length === 0) return;
     
-    const newOrder: Order = {
-      id: Math.random().toString(36).substring(2, 9),
+    const newOrder = {
       table,
       items: [...cart],
       total,
       status: 'Yeni',
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
     };
     
-    setOrders((prev) => [newOrder, ...prev]);
-    clearCart();
-    
-    // Play sound and show toast locally as well
-    playSound('new_order');
-    toast.success("Siparişiniz mutfağa gönderildi.");
-  };
-
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((order) => (order.id === orderId ? { ...order, status } : order))
-    );
-    
-    // Play sound and show toast locally
-    if (status === 'Hazırlanıyor') {
-      playSound('preparing');
-      toast.info("Sipariş hazırlanıyor");
-    } else if (status === 'Hazır') {
-      playSound('ready');
-      toast.success("Sipariş hazır!");
-    } else if (status === 'Teslim Edildi') {
-      playSound('delivered');
-      toast("Sipariş teslim edildi");
+    try {
+      await addDoc(collection(db, 'orders'), newOrder);
+      clearCart();
+      playSound('new_order');
+      toast.success("Siparişiniz mutfağa gönderildi.");
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'orders');
     }
   };
 
-  const callWaiter = (table: string) => {
-    const newCall: WaiterCall = {
-      id: Math.random().toString(36).substring(2, 9),
+  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status });
+      if (status === 'Hazırlanıyor') {
+        playSound('preparing');
+        toast.info("Sipariş hazırlanıyor");
+      } else if (status === 'Hazır') {
+        playSound('ready');
+        toast.success("Sipariş hazır!");
+      } else if (status === 'Teslim Edildi') {
+        playSound('delivered');
+        toast("Sipariş teslim edildi");
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
+    }
+  };
+
+  const callWaiter = async (table: string) => {
+    const newCall = {
       table,
-      time: new Date(),
+      time: serverTimestamp(),
       resolved: false
     };
-    setWaiterCalls(prev => [newCall, ...prev]);
-    playSound('waiter');
-    toast.success("Garsona bildirim gönderildi.");
+    try {
+      await addDoc(collection(db, 'waiter_calls'), newCall);
+      playSound('waiter');
+      toast.success("Garsona bildirim gönderildi.");
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'waiter_calls');
+    }
   };
 
-  const resolveWaiterCall = (id: string) => {
-    setWaiterCalls(prev => prev.map(call => call.id === id ? { ...call, resolved: true } : call));
+  const resolveWaiterCall = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'waiter_calls', id), { resolved: true });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `waiter_calls/${id}`);
+    }
   };
-
-  // Save waiter calls to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('casa_mexicana_waiter_calls', JSON.stringify(waiterCalls));
-  }, [waiterCalls]);
 
   return (
     <CartContext.Provider

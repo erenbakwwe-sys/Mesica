@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: orders
+    // Fields:
+    //   - table: string
+    //   - items: list
+    //   - total: number
+    //   - status: string (Yeni, Hazırlanıyor, Hazır, Teslim Edildi)
+    //   - createdAt: timestamp
+    //
+    // Collection: waiter_calls
+    // Fields:
+    //   - table: string
+    //   - time: timestamp
+    //   - resolved: bool
+    //
+    // Collection: menu
+    // Fields:
+    //   - id: string
+    //   - name: string
+    //   - description: string
+    //   - price: number
+    //   - image: string
+    //   - category: string
+    //
+    // ===============================================================
+
+    // Rules
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    match /waiter_calls/{callId} {
+      allow read, write: if true;
+    }
+
+    match /menu/{itemId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+  }
+}

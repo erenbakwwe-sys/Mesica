@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "A customer order",
+      "type": "object",
+      "properties": {
+        "table": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Yeni", "Hazırlanıyor", "Hazır", "Teslim Edildi"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["table", "items", "total", "status", "createdAt"]
+    },
+    "WaiterCall": {
+      "title": "WaiterCall",
+      "description": "A request for a waiter",
+      "type": "object",
+      "properties": {
+        "table": { "type": "string" },
+        "time": { "type": "string", "format": "date-time" },
+        "resolved": { "type": "boolean" }
+      },
+      "required": ["table", "time", "resolved"]
+    }
+  },
+  "firestore": {
+    "orders": {
+      "schema": "Order",
+      "description": "Collection of customer orders"
+    },
+    "waiter_calls": {
+      "schema": "WaiterCall",
+      "description": "Collection of waiter call requests"
+    }
+  }
+}
