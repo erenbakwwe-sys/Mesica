@@ -35,7 +35,7 @@ export interface CartItem {
   image: string;
 }
 
-export type OrderStatus = 'Yeni' | 'Hazırlanıyor' | 'Hazır' | 'Teslim Edildi';
+export type OrderStatus = 'Yeni' | 'Hazırlanıyor' | 'Hazır' | 'Teslim Edildi' | 'Ödendi';
 export type PaymentMethod = 'Nakit' | 'Kart';
 
 export interface WaiterCall {
@@ -54,6 +54,13 @@ export interface Order {
   createdAt: Date;
   paymentMethod: PaymentMethod;
   note?: string;
+}
+
+export interface Table {
+  id: string;
+  name: string;
+  isOpen: boolean;
+  openedAt?: Date | null;
 }
 
 enum OperationType {
@@ -105,9 +112,13 @@ interface CartContextType {
   orders: Order[];
   placeOrder: (table: string, paymentMethod: PaymentMethod, note?: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  deleteOrder: (orderId: string) => void;
   callWaiter: (table: string) => void;
   waiterCalls: WaiterCall[];
   resolveWaiterCall: (id: string) => void;
+  tables: Table[];
+  openTable: (id: string) => void;
+  closeTable: (id: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -117,6 +128,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
 
   // Test Connection
   useEffect(() => {
@@ -153,6 +165,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'menu');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Tables
+  useEffect(() => {
+    const q = query(collection(db, 'tables'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const existingTableIds = new Set(snapshot.docs.map(doc => doc.id));
+      const missingTables = [];
+      
+      for (let i = 1; i <= 20; i++) {
+        if (!existingTableIds.has(i.toString())) {
+          missingTables.push(i);
+        }
+      }
+
+      if (missingTables.length > 0) {
+        missingTables.forEach(i => {
+          const table: Table = {
+            id: i.toString(),
+            name: `Masa ${i}`,
+            isOpen: false,
+            openedAt: null
+          };
+          setDoc(doc(db, 'tables', i.toString()), table).catch(e => handleFirestoreError(e, OperationType.WRITE, 'tables'));
+        });
+      }
+
+      const items = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          openedAt: data.openedAt?.toDate() || null
+        } as Table;
+      });
+      items.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+      setTables(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'tables');
     });
     return () => unsubscribe();
   }, []);
@@ -293,6 +346,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     
     try {
       await addDoc(collection(db, 'orders'), newOrder);
+      
+      // If table is not open, open it automatically
+      const tableObj = tables.find(t => t.name === table);
+      if (tableObj && !tableObj.isOpen) {
+        await updateDoc(doc(db, 'tables', tableObj.id), {
+          isOpen: true,
+          openedAt: serverTimestamp()
+        });
+      }
+
       clearCart();
       playSound('new_order');
       toast.success("Siparişiniz mutfağa gönderildi.");
@@ -319,6 +382,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+      toast.success("Sipariş silindi");
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `orders/${orderId}`);
+    }
+  };
+
   const callWaiter = async (table: string) => {
     const newCall = {
       table,
@@ -342,6 +414,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const openTable = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'tables', id), {
+        isOpen: true,
+        openedAt: serverTimestamp()
+      });
+      toast.success(`Masa ${id} açıldı.`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `tables/${id}`);
+    }
+  };
+
+  const closeTable = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'tables', id), {
+        isOpen: false,
+        openedAt: null
+      });
+      
+      // Mark all active orders for this table as 'Ödendi'
+      const tableOrders = orders.filter(o => o.table === `Masa ${id}` && o.status !== 'Ödendi');
+      for (const order of tableOrders) {
+        await updateDoc(doc(db, 'orders', order.id), {
+          status: 'Ödendi'
+        });
+      }
+      
+      // Resolve all active waiter calls for this table
+      const tableCalls = waiterCalls.filter(c => c.table === `Masa ${id}` && !c.resolved);
+      for (const call of tableCalls) {
+        await updateDoc(doc(db, 'waiter_calls', call.id), {
+          resolved: true
+        });
+      }
+      
+      toast.success(`Masa ${id} kapatıldı ve hesap kesildi.`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `tables/${id}`);
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -356,9 +469,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         orders,
         placeOrder,
         updateOrderStatus,
+        deleteOrder,
         callWaiter,
         waiterCalls,
         resolveWaiterCall,
+        tables,
+        openTable,
+        closeTable
       }}
     >
       {children}

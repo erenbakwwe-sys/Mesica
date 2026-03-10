@@ -13,7 +13,7 @@ export function Navbar() {
   const links = [
     { name: 'Ana Sayfa', path: '/' },
     { name: 'Menü', path: '/menu' },
-    { name: 'QR Sipariş', path: '/order' },
+    { name: 'Garson Çağır', path: '/order' },
     { name: 'Admin', path: '/admin' },
   ];
 

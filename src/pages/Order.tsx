@@ -4,14 +4,13 @@ import { useCart, PaymentMethod } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { BellRing, CheckCircle2, ChevronRight, Minus, Plus, ShoppingBag, Trash2, CreditCard, Banknote, Loader2, MessageSquarePlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function Order() {
-  const { cart, addToCart, removeFromCart, total, placeOrder, callWaiter } = useCart();
+  const { cart, addToCart, removeFromCart, total, placeOrder, callWaiter, tables } = useCart();
   const navigate = useNavigate();
-  const [tableNumber] = useState('Masa 7');
+  const [tableNumber, setTableNumber] = useState('Masa 1');
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Kart');
@@ -70,10 +69,21 @@ export function Order() {
       transition={{ duration: 0.3 }}
       className="mx-auto max-w-3xl pb-12"
     >
-      <div className="mb-8 flex items-center justify-between rounded-2xl bg-orange-50 p-6">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl bg-orange-50 p-6 gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">{tableNumber} – Dijital Menü</h1>
-          <p className="text-slate-500">QR Sipariş Ekranı</p>
+          <div className="flex items-center gap-2 mb-2">
+            <select 
+              value={tableNumber} 
+              onChange={(e) => setTableNumber(e.target.value)}
+              className="bg-white border border-orange-200 text-slate-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-2"
+            >
+              {tables.map(t => (
+                <option key={t.id} value={t.name}>{t.name}</option>
+              ))}
+            </select>
+            <span className="text-2xl font-bold tracking-tight text-slate-900">– Dijital Menü</span>
+          </div>
+          <p className="text-slate-500">Garson Çağır</p>
         </div>
         <Button
           variant={waiterCalled ? "default" : "outline"}
