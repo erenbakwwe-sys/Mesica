@@ -123,11 +123,22 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-const sendPushNotification = (title: string, body: string) => {
-  if (!("Notification" in window)) return;
-  const isAdmin = sessionStorage.getItem('casa_mexicana_admin_logged_in') === 'true';
-  if (isAdmin && Notification.permission === "granted") {
-    new Notification(title, { body });
+const sendPushNotification = async (title: string, body: string) => {
+  try {
+    if (!("Notification" in window)) return;
+    const isAdmin = sessionStorage.getItem('casa_mexicana_admin_logged_in') === 'true';
+    if (isAdmin && Notification.permission === "granted") {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        if (registration) {
+          registration.showNotification(title, { body, icon: '/vite.svg' });
+          return;
+        }
+      }
+      new Notification(title, { body });
+    }
+  } catch (error) {
+    console.error("Bildirim gönderilirken hata oluştu:", error);
   }
 };
 
