@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 export function Menu() {
   const { menuItems, cart, addToCart, removeFromCart, total } = useCart();
   const [activeCategory, setActiveCategory] = useState<string>('Tümü');
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   const categories = ['Tümü', ...Array.from(new Set(menuItems.map((item) => item.category)))];
@@ -18,6 +19,10 @@ export function Menu() {
     : menuItems.filter((item) => item.category === activeCategory);
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const toggleExpand = (id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   return (
     <motion.div 
@@ -74,8 +79,30 @@ export function Menu() {
                     <CardTitle className="text-xl">{item.name}</CardTitle>
                     <span className="font-semibold text-orange-600">₺{item.price}</span>
                   </div>
-                  <CardDescription className="mt-2 line-clamp-2">
-                    {item.description}
+                  <CardDescription className="mt-2 text-sm text-slate-500">
+                    {item.description.length > 80 && !expandedItems[item.id] ? (
+                      <>
+                        {item.description.slice(0, 80)}...
+                        <button 
+                          onClick={() => toggleExpand(item.id)}
+                          className="text-orange-600 font-medium ml-1 hover:underline focus:outline-none"
+                        >
+                          devamı...
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {item.description}
+                        {item.description.length > 80 && (
+                          <button 
+                            onClick={() => toggleExpand(item.id)}
+                            className="text-orange-600 font-medium ml-1 hover:underline focus:outline-none"
+                          >
+                            kısalt
+                          </button>
+                        )}
+                      </>
+                    )}
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="p-5 pt-4 mt-auto">

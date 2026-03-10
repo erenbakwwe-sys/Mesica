@@ -32,7 +32,13 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
 
     if (isValid) {
       setError('');
-      onLogin();
+      if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        Notification.requestPermission().then(() => {
+          onLogin();
+        });
+      } else {
+        onLogin();
+      }
     } else {
       setError('Kullanıcı adı veya şifre yanlış.');
     }

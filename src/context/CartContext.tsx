@@ -123,6 +123,14 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const sendPushNotification = (title: string, body: string) => {
+  if (!("Notification" in window)) return;
+  const isAdmin = sessionStorage.getItem('casa_mexicana_admin_logged_in') === 'true';
+  if (isAdmin && Notification.permission === "granted") {
+    new Notification(title, { body });
+  }
+};
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -228,6 +236,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (newOrders.length > 0 && prev.length > 0) {
           playSound('new_order');
           toast.success(`Yeni sipariş geldi! (${newOrders[0].table})`);
+          sendPushNotification("Yeni Sipariş", `${newOrders[0].table} masasından yeni bir sipariş geldi.`);
         } else {
           formatted.forEach(fo => {
             const existing = prev.find(po => po.id === fo.id);
@@ -271,6 +280,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (newCalls.length > 0 && prev.length > 0) {
           playSound('waiter');
           toast.warning(`Garson çağrıldı: ${newCalls[0].table}`);
+          sendPushNotification("Garson Çağrısı", `${newCalls[0].table} garson çağırıyor.`);
         }
         return formatted;
       });
