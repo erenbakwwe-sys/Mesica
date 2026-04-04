@@ -174,23 +174,34 @@ export function AdminTables() {
                               Garson Çağrıları
                             </h3>
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                              {stats.tableCalls.map(call => (
-                                <Card key={call.id} className="border-red-200 bg-red-50">
-                                  <CardContent className="p-4 flex items-center justify-between">
-                                    <div className="text-sm text-red-800 font-medium">
-                                      {new Date(call.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                    <Button 
-                                      size="sm" 
-                                      className="bg-red-600 hover:bg-red-700 text-white"
-                                      onClick={() => resolveWaiterCall(call.id)}
-                                    >
-                                      <CheckCircle2 className="w-4 h-4 mr-1" />
-                                      İlgilenildi
-                                    </Button>
-                                  </CardContent>
-                                </Card>
-                              ))}
+                              <AnimatePresence>
+                                {stats.tableCalls.map(call => (
+                                  <motion.div
+                                    key={call.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.2 }}
+                                  >
+                                    <Card className="border-red-200 bg-red-50 h-full">
+                                      <CardContent className="p-4 flex items-center justify-between h-full">
+                                        <div className="text-sm text-red-800 font-medium">
+                                          {new Date(call.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                        <Button 
+                                          size="sm" 
+                                          className="bg-red-600 hover:bg-red-700 text-white"
+                                          onClick={() => resolveWaiterCall(call.id)}
+                                        >
+                                          <CheckCircle2 className="w-4 h-4 mr-1" />
+                                          İlgilenildi
+                                        </Button>
+                                      </CardContent>
+                                    </Card>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
                             </div>
                           </div>
                         )}
@@ -205,70 +216,82 @@ export function AdminTables() {
                             <div className="text-slate-500 text-sm bg-slate-50 p-4 rounded-lg border border-slate-100 text-center">Bu masaya ait aktif sipariş bulunmuyor.</div>
                           ) : (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                              {stats.tableOrders.map(order => (
-                                <Card key={order.id} className="border-slate-200 flex flex-col">
-                                  <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50">
-                                    <div className="flex justify-between items-center">
-                                      <div className="text-sm font-medium text-slate-500">
-                                        {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      </div>
-                                      <Badge variant={
-                                        order.status === 'Yeni' ? 'info' : 
-                                        order.status === 'Hazırlanıyor' ? 'warning' : 
-                                        order.status === 'Hazır' ? 'success' : 'default'
-                                      }>
-                                        {order.status}
-                                      </Badge>
-                                    </div>
-                                  </CardHeader>
-                                  <CardContent className="p-4 flex-1">
-                                    <ul className="space-y-2 mb-4">
-                                      {order.items.map(item => (
-                                        <li key={item.id} className="flex justify-between text-sm">
-                                          <span className="text-slate-700 font-medium">{item.quantity}x {item.name}</span>
-                                          <span className="text-slate-500">₺{(item.price * item.quantity).toFixed(2)}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                                      <span className="text-xs font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-600">
-                                        {order.paymentMethod}
-                                      </span>
-                                      <span className="font-bold text-slate-900 text-lg">₺{order.total.toFixed(2)}</span>
-                                    </div>
-                                    {order.note && (
-                                      <div className="mt-3 text-sm bg-orange-50 text-orange-800 p-3 rounded-md border border-orange-100">
-                                        <span className="font-semibold block mb-1">Not:</span> {order.note}
-                                      </div>
-                                    )}
-                                  </CardContent>
-                                  <CardFooter className="p-4 pt-0 flex gap-2 mt-auto">
-                                    {order.status === 'Yeni' && (
-                                      <Button size="sm" className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" onClick={() => updateOrderStatus(order.id, 'Hazırlanıyor')}>
-                                        <Play className="w-3 h-3 mr-1" />
-                                        Hazırlanıyor
-                                      </Button>
-                                    )}
-                                    {order.status === 'Hazırlanıyor' && (
-                                      <Button size="sm" className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => updateOrderStatus(order.id, 'Hazır')}>
-                                        <Check className="w-3 h-3 mr-1" />
-                                        Hazır
-                                      </Button>
-                                    )}
-                                    {order.status === 'Hazır' && (
-                                      <Button size="sm" className="w-full bg-slate-800 hover:bg-slate-900 text-white" onClick={() => updateOrderStatus(order.id, 'Teslim Edildi')}>
-                                        <CheckCircle2 className="w-3 h-3 mr-1" />
-                                        Teslim Edildi
-                                      </Button>
-                                    )}
-                                    {order.status === 'Teslim Edildi' && (
-                                      <div className="w-full text-center text-sm font-medium text-slate-500 py-2 bg-slate-50 rounded-md">
-                                        Müşteriye teslim edildi
-                                      </div>
-                                    )}
-                                  </CardFooter>
-                                </Card>
-                              ))}
+                              <AnimatePresence>
+                                {stats.tableOrders.map(order => (
+                                  <motion.div
+                                    key={order.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="h-full"
+                                  >
+                                    <Card className="border-slate-200 flex flex-col h-full">
+                                      <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50">
+                                        <div className="flex justify-between items-center">
+                                          <div className="text-sm font-medium text-slate-500">
+                                            {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                          </div>
+                                          <Badge variant={
+                                            order.status === 'Yeni' ? 'info' : 
+                                            order.status === 'Hazırlanıyor' ? 'warning' : 
+                                            order.status === 'Hazır' ? 'success' : 'default'
+                                          }>
+                                            {order.status}
+                                          </Badge>
+                                        </div>
+                                      </CardHeader>
+                                      <CardContent className="p-4 flex-1">
+                                        <ul className="space-y-2 mb-4">
+                                          {order.items.map(item => (
+                                            <li key={item.id} className="flex justify-between text-sm">
+                                              <span className="text-slate-700 font-medium">{item.quantity}x {item.name}</span>
+                                              <span className="text-slate-500">₺{(item.price * item.quantity).toFixed(2)}</span>
+                                            </li>
+                                          ))}
+                                        </ul>
+                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+                                          <span className="text-xs font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-600">
+                                            {order.paymentMethod}
+                                          </span>
+                                          <span className="font-bold text-slate-900 text-lg">₺{order.total.toFixed(2)}</span>
+                                        </div>
+                                        {order.note && (
+                                          <div className="mt-3 text-sm bg-orange-50 text-orange-800 p-3 rounded-md border border-orange-100">
+                                            <span className="font-semibold block mb-1">Not:</span> {order.note}
+                                          </div>
+                                        )}
+                                      </CardContent>
+                                      <CardFooter className="p-4 pt-0 flex gap-2 mt-auto">
+                                        {order.status === 'Yeni' && (
+                                          <Button size="sm" className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" onClick={() => updateOrderStatus(order.id, 'Hazırlanıyor')}>
+                                            <Play className="w-3 h-3 mr-1" />
+                                            Hazırlanıyor
+                                          </Button>
+                                        )}
+                                        {order.status === 'Hazırlanıyor' && (
+                                          <Button size="sm" className="w-full bg-green-500 hover:bg-green-600 text-white" onClick={() => updateOrderStatus(order.id, 'Hazır')}>
+                                            <Check className="w-3 h-3 mr-1" />
+                                            Hazır
+                                          </Button>
+                                        )}
+                                        {order.status === 'Hazır' && (
+                                          <Button size="sm" className="w-full bg-slate-800 hover:bg-slate-900 text-white" onClick={() => updateOrderStatus(order.id, 'Teslim Edildi')}>
+                                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                                            Teslim Edildi
+                                          </Button>
+                                        )}
+                                        {order.status === 'Teslim Edildi' && (
+                                          <div className="w-full text-center text-sm font-medium text-slate-500 py-2 bg-slate-50 rounded-md">
+                                            Müşteriye teslim edildi
+                                          </div>
+                                        )}
+                                      </CardFooter>
+                                    </Card>
+                                  </motion.div>
+                                ))}
+                              </AnimatePresence>
                             </div>
                           )}
                         </div>

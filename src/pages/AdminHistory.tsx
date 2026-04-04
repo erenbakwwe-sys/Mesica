@@ -79,59 +79,71 @@ export function AdminHistory() {
             <div key={tableName} className="space-y-4">
               <h3 className="text-xl font-semibold text-slate-900 border-b pb-2">{tableName}</h3>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {groupedOrders[tableName]
-                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                  .map(order => (
-                  <Card key={order.id} className="border-slate-200 flex flex-col bg-slate-50/50">
-                    <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-white">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="text-sm font-medium text-slate-900">
-                            {new Date(order.createdAt).toLocaleDateString('tr-TR')}
+                <AnimatePresence>
+                  {groupedOrders[tableName]
+                    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                    .map(order => (
+                    <motion.div
+                      key={order.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ duration: 0.2 }}
+                      className="h-full"
+                    >
+                      <Card className="border-slate-200 flex flex-col bg-slate-50/50 h-full">
+                        <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-white">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="text-sm font-medium text-slate-900">
+                                {new Date(order.createdAt).toLocaleDateString('tr-TR')}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {new Date(order.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="bg-slate-100 text-slate-600">
+                              {order.status}
+                            </Badge>
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {new Date(order.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </CardHeader>
+                        <CardContent className="p-4 flex-1">
+                          <ul className="space-y-2 mb-4">
+                            {order.items.map(item => (
+                              <li key={item.id} className="flex justify-between text-sm">
+                                <span className="text-slate-700">{item.quantity}x {item.name}</span>
+                                <span className="text-slate-500">₺{(item.price * item.quantity).toFixed(2)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
+                            <span className="text-xs font-medium px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600">
+                              {order.paymentMethod}
+                            </span>
+                            <span className="font-bold text-slate-900">₺{order.total.toFixed(2)}</span>
                           </div>
-                        </div>
-                        <Badge variant="outline" className="bg-slate-100 text-slate-600">
-                          {order.status}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 flex-1">
-                      <ul className="space-y-2 mb-4">
-                        {order.items.map(item => (
-                          <li key={item.id} className="flex justify-between text-sm">
-                            <span className="text-slate-700">{item.quantity}x {item.name}</span>
-                            <span className="text-slate-500">₺{(item.price * item.quantity).toFixed(2)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
-                        <span className="text-xs font-medium px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600">
-                          {order.paymentMethod}
-                        </span>
-                        <span className="font-bold text-slate-900">₺{order.total.toFixed(2)}</span>
-                      </div>
-                      {order.note && (
-                        <div className="mt-3 text-xs bg-white text-slate-600 p-2 rounded border border-slate-200">
-                          <span className="font-semibold">Not:</span> {order.note}
-                        </div>
-                      )}
-                    </CardContent>
-                    <CardFooter className="p-4 pt-0 flex justify-end mt-auto">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => setOrderToDelete(order.id)}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Sil
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                          {order.note && (
+                            <div className="mt-3 text-xs bg-white text-slate-600 p-2 rounded border border-slate-200">
+                              <span className="font-semibold">Not:</span> {order.note}
+                            </div>
+                          )}
+                        </CardContent>
+                        <CardFooter className="p-4 pt-0 flex justify-end mt-auto">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setOrderToDelete(order.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Sil
+                          </Button>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </div>
           ))}

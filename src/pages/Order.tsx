@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useCart, PaymentMethod } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
@@ -10,6 +10,8 @@ import { motion, AnimatePresence } from 'motion/react';
 export function Order() {
   const { cart, addToCart, removeFromCart, total, placeOrder, callWaiter, tables } = useCart();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
   const [tableNumber, setTableNumber] = useState('Masa 1');
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -17,6 +19,13 @@ export function Order() {
   const [wantsNote, setWantsNote] = useState(false);
   const [note, setNote] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    const tableParam = searchParams.get('table');
+    if (tableParam) {
+      setTableNumber(tableParam);
+    }
+  }, [searchParams]);
 
   const handleCallWaiter = () => {
     callWaiter(tableNumber);

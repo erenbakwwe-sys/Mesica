@@ -3,17 +3,19 @@ import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Clock, CheckCircle2, ChefHat, LogOut, Play, Check, ListOrdered, UtensilsCrossed, BellRing, History } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Clock, CheckCircle2, ChefHat, LogOut, Play, Check, ListOrdered, UtensilsCrossed, BellRing, History, LayoutDashboard, QrCode } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AdminLogin } from './AdminLogin';
 import { AdminMenu } from './AdminMenu';
 import { AdminTables } from './AdminTables';
 import { AdminHistory } from './AdminHistory';
+import { AdminDashboard } from './AdminDashboard';
+import { AdminQRCodes } from './AdminQRCodes';
 
 export function Admin() {
   const { orders, updateOrderStatus, waiterCalls, resolveWaiterCall } = useCart();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<'orders' | 'menu' | 'waiter' | 'history'>('orders');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'waiter' | 'history' | 'qr'>('dashboard');
   
   const activeWaiterCalls = waiterCalls ? waiterCalls.filter(c => !c.resolved) : [];
   const newOrdersCount = orders ? orders.filter(o => o.status === 'Yeni').length : 0;
@@ -47,13 +49,22 @@ export function Admin() {
       transition={{ duration: 0.3 }}
       className="flex flex-col gap-8"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center justify-between print:hidden">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Admin Paneli</h1>
           <p className="mt-1 text-slate-500">Restoranınızı yönetin.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex p-1 bg-slate-100 rounded-lg overflow-x-auto">
+        <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+          <div className="flex p-1 bg-slate-100 rounded-lg whitespace-nowrap">
+            <Button 
+              variant={activeTab === 'dashboard' ? 'default' : 'ghost'} 
+              size="sm" 
+              onClick={() => setActiveTab('dashboard')}
+              className={activeTab === 'dashboard' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}
+            >
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Özet & Finans
+            </Button>
             <Button 
               variant={activeTab === 'orders' ? 'default' : 'ghost'} 
               size="sm" 
@@ -62,7 +73,7 @@ export function Admin() {
             >
               <div className="relative flex items-center">
                 <ListOrdered className="mr-2 h-4 w-4" />
-                Masalar & Siparişler
+                Masalar
                 {newOrdersCount > 0 && (
                   <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                     {newOrdersCount}
@@ -78,7 +89,7 @@ export function Admin() {
             >
               <div className="relative flex items-center">
                 <BellRing className="mr-2 h-4 w-4" />
-                Garson Çağrıları
+                Çağrılar
                 {activeWaiterCalls.length > 0 && (
                   <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                     {activeWaiterCalls.length}
@@ -93,7 +104,7 @@ export function Admin() {
               className={activeTab === 'menu' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}
             >
               <UtensilsCrossed className="mr-2 h-4 w-4" />
-              Menü Yönetimi
+              Menü
             </Button>
             <Button 
               variant={activeTab === 'history' ? 'default' : 'ghost'} 
@@ -102,7 +113,16 @@ export function Admin() {
               className={activeTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}
             >
               <History className="mr-2 h-4 w-4" />
-              Geçmiş Siparişler
+              Geçmiş
+            </Button>
+            <Button 
+              variant={activeTab === 'qr' ? 'default' : 'ghost'} 
+              size="sm" 
+              onClick={() => setActiveTab('qr')}
+              className={activeTab === 'qr' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'}
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              QR Kodlar
             </Button>
           </div>
           <Button variant="outline" onClick={handleLogout} className="text-slate-500 shrink-0">
@@ -112,7 +132,9 @@ export function Admin() {
         </div>
       </div>
 
-      {activeTab === 'waiter' ? (
+      {activeTab === 'dashboard' ? (
+        <AdminDashboard />
+      ) : activeTab === 'waiter' ? (
         activeWaiterCalls.length === 0 ? (
           <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 text-center py-16">
             <CardContent className="flex flex-col items-center justify-center">
@@ -125,46 +147,52 @@ export function Admin() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {activeWaiterCalls.map((call, index) => (
-              <motion.div
-                key={call.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <Card className="h-full flex flex-col border-l-4 border-l-red-500">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-xl">{call.table}</CardTitle>
-                        <CardDescription className="mt-1 flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5" />
-                          {new Date(call.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </CardDescription>
+            <AnimatePresence>
+              {activeWaiterCalls.map((call, index) => (
+                <motion.div
+                  key={call.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card className="h-full flex flex-col border-l-4 border-l-red-500 shadow-md">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-xl">{call.table}</CardTitle>
+                          <CardDescription className="mt-1 flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5" />
+                            {new Date(call.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="destructive" className="animate-pulse">
+                          Bekliyor
+                        </Badge>
                       </div>
-                      <Badge variant="destructive" className="animate-pulse">
-                        Bekliyor
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardFooter className="flex-col items-stretch border-t border-slate-100 bg-slate-50/50 p-4 mt-auto">
-                    <Button 
-                      className="w-full bg-green-500 hover:bg-green-600 text-white" 
-                      onClick={() => resolveWaiterCall(call.id)}
-                    >
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                      İlgilenildi
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
-            ))}
+                    </CardHeader>
+                    <CardFooter className="flex-col items-stretch border-t border-slate-100 bg-slate-50/50 p-4 mt-auto">
+                      <Button 
+                        className="w-full bg-green-500 hover:bg-green-600 text-white" 
+                        onClick={() => resolveWaiterCall(call.id)}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        İlgilenildi
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
         )
       ) : activeTab === 'menu' ? (
         <AdminMenu />
       ) : activeTab === 'history' ? (
         <AdminHistory />
+      ) : activeTab === 'qr' ? (
+        <AdminQRCodes />
       ) : (
         <AdminTables />
       )}
