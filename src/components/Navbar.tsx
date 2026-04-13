@@ -20,11 +20,11 @@ export function Navbar() {
   const cartItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-orange-100 bg-white/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 w-full border-b border-blue-100 bg-white/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-bold text-orange-600 tracking-tight">Chef Taus Kitchen</span>
+            <span className="text-2xl font-bold text-blue-600 tracking-tight">İzmir Deniz Restaurant</span>
           </Link>
         </div>
 
@@ -35,8 +35,8 @@ export function Navbar() {
               key={link.path}
               to={link.path}
               className={cn(
-                'text-sm font-medium transition-colors hover:text-orange-600',
-                location.pathname === link.path ? 'text-orange-600' : 'text-slate-600'
+                'text-sm font-medium transition-colors hover:text-blue-600',
+                location.pathname === link.path ? 'text-blue-600' : 'text-slate-600'
               )}
             >
               {link.name}
@@ -46,7 +46,7 @@ export function Navbar() {
             <Button variant="outline" className="relative h-10 w-10 rounded-full p-0">
               <ShoppingBag className="h-5 w-5" />
               {cartItemsCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                   {cartItemsCount}
                 </span>
               )}
@@ -60,7 +60,7 @@ export function Navbar() {
             <Button variant="outline" className="relative h-10 w-10 rounded-full p-0">
               <ShoppingBag className="h-5 w-5" />
               {cartItemsCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
                   {cartItemsCount}
                 </span>
               )}
@@ -74,7 +74,7 @@ export function Navbar() {
 
       {/* Mobile Nav Menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-orange-100 bg-white px-4 py-4 shadow-lg">
+        <div className="md:hidden border-t border-blue-100 bg-white px-4 py-4 shadow-lg">
           <div className="flex flex-col space-y-4">
             {links.map((link) => (
               <Link
@@ -82,8 +82,8 @@ export function Navbar() {
                 to={link.path}
                 onClick={() => setIsOpen(false)}
                 className={cn(
-                  'text-base font-medium transition-colors hover:text-orange-600',
-                  location.pathname === link.path ? 'text-orange-600' : 'text-slate-600'
+                  'text-base font-medium transition-colors hover:text-blue-600',
+                  location.pathname === link.path ? 'text-blue-600' : 'text-slate-600'
                 )}
               >
                 {link.name}

@@ -35,14 +35,20 @@ export interface CartItem {
   image: string;
 }
 
-export type OrderStatus = 'Yeni' | 'Hazırlanıyor' | 'Hazır' | 'Teslim Edildi' | 'Ödendi';
-export type PaymentMethod = 'Nakit' | 'Kart';
+export type OrderStatus = 'Ödeme Bekleniyor' | 'Yeni' | 'Hazırlanıyor' | 'Hazır' | 'Teslim Edildi' | 'Ödendi';
+export type PaymentMethod = 'Nakit' | 'Kart' | 'POS';
 
 export interface WaiterCall {
   id: string;
   table: string;
   time: Date;
   resolved: boolean;
+}
+
+export interface PaymentRecord {
+  method: PaymentMethod;
+  amount: number;
+  date: Date;
 }
 
 export interface Order {
@@ -52,8 +58,11 @@ export interface Order {
   total: number;
   status: OrderStatus;
   createdAt: Date;
-  paymentMethod: PaymentMethod;
+  paymentMethod: PaymentMethod; // Primary or initial method
   note?: string;
+  paidAmount?: number;
+  remainingAmount?: number;
+  payments?: PaymentRecord[];
 }
 
 export interface Table {
@@ -100,7 +109,7 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-interface CartContextType {
+export interface CartContextType {
   menuItems: MenuItem[];
   addMenuItem: (item: MenuItem) => void;
   removeMenuItem: (itemId: string) => void;
@@ -110,7 +119,8 @@ interface CartContextType {
   clearCart: () => void;
   total: number;
   orders: Order[];
-  placeOrder: (table: string, paymentMethod: PaymentMethod, note?: string) => void;
+  placeOrder: (table: string, paymentMethod: PaymentMethod, note?: string, paidAmount?: number) => Promise<string | undefined>;
+  addPaymentToOrder: (orderId: string, amount: number, method: PaymentMethod) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
   callWaiter: (table: string) => void;
@@ -126,12 +136,16 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 const sendPushNotification = async (title: string, body: string) => {
   try {
     if (!("Notification" in window)) return;
-    const isAdmin = sessionStorage.getItem('casa_mexicana_admin_logged_in') === 'true';
+    const isAdmin = sessionStorage.getItem('izmir_deniz_admin_logged_in') === 'true';
     if (isAdmin && Notification.permission === "granted") {
       if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
+        const registration = await navigator.serviceWorker.getRegistration();
         if (registration) {
-          registration.showNotification(title, { body, icon: '/vite.svg' });
+          await registration.showNotification(title, { 
+            body, 
+            icon: '/vite.svg',
+            vibrate: [200, 100, 200]
+          });
           return;
         }
       }
@@ -167,8 +181,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const q = query(collection(db, 'menu'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty && !localStorage.getItem('casa_mexicana_menu_seeded')) {
-        localStorage.setItem('casa_mexicana_menu_seeded', 'true');
+      if (snapshot.empty && !localStorage.getItem('izmir_deniz_menu_seeded')) {
+        localStorage.setItem('izmir_deniz_menu_seeded', 'true');
         // Populate initial menu if empty
         INITIAL_MENU_ITEMS.forEach(async (item) => {
           try {
@@ -178,7 +192,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         });
       } else {
-        localStorage.setItem('casa_mexicana_menu_seeded', 'true');
+        localStorage.setItem('izmir_deniz_menu_seeded', 'true');
         const items = snapshot.docs.map(doc => doc.data() as MenuItem);
         setMenuItems(items);
       }
@@ -234,7 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const formatted = snapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         return {
           ...data,
           id: doc.id,
@@ -278,7 +292,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const q = query(collection(db, 'waiter_calls'), orderBy('time', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const formatted = snapshot.docs.map(doc => {
-        const data = doc.data();
+        const data = doc.data({ serverTimestamps: 'estimate' });
         return {
           ...data,
           id: doc.id,
@@ -352,21 +366,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const placeOrder = async (table: string, paymentMethod: PaymentMethod, note?: string) => {
+  const placeOrder = async (table: string, paymentMethod: PaymentMethod, note?: string, paidAmount?: number) => {
     if (cart.length === 0) return;
+    
+    const isPartialPayment = paidAmount !== undefined && paidAmount < total;
+    const initialStatus: OrderStatus = isPartialPayment ? 'Ödeme Bekleniyor' : 'Yeni';
     
     const newOrder = {
       table,
       items: [...cart],
       total,
-      status: 'Yeni',
+      status: initialStatus,
       createdAt: serverTimestamp(),
       paymentMethod,
       note: note || '',
+      paidAmount: paidAmount || (isPartialPayment ? 0 : total),
+      remainingAmount: isPartialPayment ? total - paidAmount : 0,
+      payments: paidAmount ? [{ method: paymentMethod, amount: paidAmount, date: new Date() }] : []
     };
     
     try {
-      await addDoc(collection(db, 'orders'), newOrder);
+      const docRef = await addDoc(collection(db, 'orders'), newOrder);
       
       // If table is not open, open it automatically
       const tableObj = tables.find(t => t.name === table);
@@ -378,10 +398,44 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       clearCart();
-      playSound('new_order');
-      toast.success("Siparişiniz mutfağa gönderildi.");
+      if (!isPartialPayment) {
+        playSound('new_order');
+        toast.success("Siparişiniz mutfağa gönderildi.");
+      } else {
+        toast.success("Kısmi ödeme alındı, diğer ödemeler bekleniyor.");
+      }
+      return docRef.id;
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'orders');
+    }
+  };
+
+  const addPaymentToOrder = async (orderId: string, amount: number, method: PaymentMethod) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const newPaidAmount = (order.paidAmount || 0) + amount;
+    const newRemainingAmount = Math.max(0, order.total - newPaidAmount);
+    const isFullyPaid = newRemainingAmount <= 0;
+
+    const newPaymentRecord = { method, amount, date: new Date() };
+
+    try {
+      await updateDoc(doc(db, 'orders', orderId), {
+        paidAmount: newPaidAmount,
+        remainingAmount: newRemainingAmount,
+        payments: [...(order.payments || []), newPaymentRecord],
+        status: isFullyPaid ? 'Yeni' : 'Ödeme Bekleniyor'
+      });
+
+      if (isFullyPaid) {
+        playSound('new_order');
+        toast.success("Ödeme tamamlandı, sipariş mutfağa gönderildi.");
+      } else {
+        toast.success(`₺${amount.toFixed(2)} ödeme alındı. Kalan: ₺${newRemainingAmount.toFixed(2)}`);
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `orders/${orderId}`);
     }
   };
 
@@ -489,6 +543,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         total,
         orders,
         placeOrder,
+        addPaymentToOrder,
         updateOrderStatus,
         deleteOrder,
         callWaiter,

@@ -18,10 +18,10 @@ export function Admin() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'waiter' | 'history' | 'qr'>('dashboard');
   
   const activeWaiterCalls = waiterCalls ? waiterCalls.filter(c => !c.resolved) : [];
-  const newOrdersCount = orders ? orders.filter(o => o.status === 'Yeni').length : 0;
+  const newOrdersCount = orders ? orders.filter(o => o.status === 'Yeni' || o.status === 'Ödeme Bekleniyor').length : 0;
 
   useEffect(() => {
-    const loggedIn = sessionStorage.getItem('casa_mexicana_admin_logged_in');
+    const loggedIn = sessionStorage.getItem('izmir_deniz_admin_logged_in');
     if (loggedIn === 'true') {
       setIsLoggedIn(true);
     }
@@ -29,12 +29,12 @@ export function Admin() {
 
   const handleLogin = () => {
     setIsLoggedIn(true);
-    sessionStorage.setItem('casa_mexicana_admin_logged_in', 'true');
+    sessionStorage.setItem('izmir_deniz_admin_logged_in', 'true');
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    sessionStorage.removeItem('casa_mexicana_admin_logged_in');
+    sessionStorage.removeItem('izmir_deniz_admin_logged_in');
   };
 
   if (!isLoggedIn) {

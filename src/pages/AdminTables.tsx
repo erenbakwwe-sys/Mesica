@@ -17,10 +17,18 @@ export function AdminTables() {
     const newOrdersCount = tableOrders.filter(o => o.status === 'Yeni').length;
     const activeOrdersCount = tableOrders.length;
     
-    // Sadece nakit ödemelerin tutarını hesapla
+    // Sadece nakit ödemelerin tutarını hesapla (kısmi ödemeler dahil)
     const cashTotal = tableOrders
-      .filter(o => o.paymentMethod === 'Nakit')
-      .reduce((sum, order) => sum + order.total, 0);
+      .reduce((sum, order) => {
+        if (order.status === 'Ödeme Bekleniyor') {
+          // Kısmi ödemelerde nakit olanları topla
+          const cashPayments = order.payments?.filter(p => p.method === 'Nakit').reduce((s, p) => s + p.amount, 0) || 0;
+          return sum + cashPayments;
+        } else if (order.paymentMethod === 'Nakit') {
+          return sum + order.total;
+        }
+        return sum;
+      }, 0);
 
     return {
       tableOrders,
@@ -48,7 +56,7 @@ export function AdminTables() {
                 className={`cursor-pointer h-full flex flex-col transition-colors ${
                   table.isOpen 
                     ? stats.hasNotification 
-                      ? 'border-orange-400 bg-orange-50' 
+                      ? 'border-blue-400 bg-blue-50' 
                       : 'border-green-400 bg-green-50'
                     : 'border-slate-200 bg-slate-50 opacity-70 hover:opacity-100'
                 } ${selectedTable === table.id ? 'ring-2 ring-slate-900 shadow-md' : ''}`}
@@ -209,7 +217,7 @@ export function AdminTables() {
                         {/* Active Orders */}
                         <div>
                           <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
-                            <Utensils className="w-5 h-5 mr-2 text-orange-500" />
+                            <Utensils className="w-5 h-5 mr-2 text-blue-500" />
                             Aktif Siparişler
                           </h3>
                           {stats.tableOrders.length === 0 ? (
@@ -236,7 +244,8 @@ export function AdminTables() {
                                           <Badge variant={
                                             order.status === 'Yeni' ? 'info' : 
                                             order.status === 'Hazırlanıyor' ? 'warning' : 
-                                            order.status === 'Hazır' ? 'success' : 'default'
+                                            order.status === 'Hazır' ? 'success' : 
+                                            order.status === 'Ödeme Bekleniyor' ? 'destructive' : 'default'
                                           }>
                                             {order.status}
                                           </Badge>
@@ -251,19 +260,32 @@ export function AdminTables() {
                                             </li>
                                           ))}
                                         </ul>
-                                        <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
-                                          <span className="text-xs font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-600">
-                                            {order.paymentMethod}
-                                          </span>
-                                          <span className="font-bold text-slate-900 text-lg">₺{order.total.toFixed(2)}</span>
+                                        <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs font-medium px-2 py-1 rounded-md bg-slate-100 text-slate-600">
+                                              {order.status === 'Ödeme Bekleniyor' ? 'Ortak Hesap' : order.paymentMethod}
+                                            </span>
+                                            <span className="font-bold text-slate-900 text-lg">₺{order.total.toFixed(2)}</span>
+                                          </div>
+                                          {order.status === 'Ödeme Bekleniyor' && (
+                                            <div className="flex justify-between items-center text-sm">
+                                              <span className="text-slate-500">Kalan Tutar:</span>
+                                              <span className="font-bold text-red-600">₺{(order.remainingAmount || 0).toFixed(2)}</span>
+                                            </div>
+                                          )}
                                         </div>
                                         {order.note && (
-                                          <div className="mt-3 text-sm bg-orange-50 text-orange-800 p-3 rounded-md border border-orange-100">
+                                          <div className="mt-3 text-sm bg-blue-50 text-blue-800 p-3 rounded-md border border-blue-100">
                                             <span className="font-semibold block mb-1">Not:</span> {order.note}
                                           </div>
                                         )}
                                       </CardContent>
                                       <CardFooter className="p-4 pt-0 flex gap-2 mt-auto">
+                                        {order.status === 'Ödeme Bekleniyor' && (
+                                          <div className="w-full text-center text-sm font-medium text-red-500 py-2 bg-red-50 rounded-md">
+                                            Ödemenin tamamlanması bekleniyor
+                                          </div>
+                                        )}
                                         {order.status === 'Yeni' && (
                                           <Button size="sm" className="w-full bg-yellow-500 hover:bg-yellow-600 text-white" onClick={() => updateOrderStatus(order.id, 'Hazırlanıyor')}>
                                             <Play className="w-3 h-3 mr-1" />

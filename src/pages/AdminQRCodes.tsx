@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -8,8 +8,21 @@ import { Printer, QrCode } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function AdminQRCodes() {
-  const [tableCount, setTableCount] = useState<number>(20);
-  const [generated, setGenerated] = useState<boolean>(false);
+  const [tableCount, setTableCount] = useState<number>(() => {
+    const saved = localStorage.getItem('qr_table_count');
+    return saved ? parseInt(saved, 10) : 50;
+  });
+  const [generated, setGenerated] = useState<boolean>(() => {
+    return localStorage.getItem('qr_generated') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('qr_table_count', tableCount.toString());
+  }, [tableCount]);
+
+  useEffect(() => {
+    localStorage.setItem('qr_generated', generated.toString());
+  }, [generated]);
 
   const handleGenerate = () => {
     if (tableCount > 0 && tableCount <= 100) {
@@ -23,13 +36,13 @@ export function AdminQRCodes() {
     window.print();
   };
 
-  const baseUrl = window.location.origin;
+  const baseUrl = 'https://mesica.vercel.app';
 
   return (
     <div className="space-y-6">
       <div className="print:hidden">
         <h2 className="text-2xl font-bold tracking-tight text-slate-900">QR Kod Oluşturucu</h2>
-        <p className="text-slate-500">Masalarınız için QR kodlar oluşturun ve yazdırın.</p>
+        <p className="text-slate-500">Masalarınız için kalıcı QR kodlar oluşturun ve yazdırın.</p>
       </div>
 
       <Card className="border-none shadow-md print:hidden">
@@ -49,9 +62,9 @@ export function AdminQRCodes() {
               onChange={(e) => setTableCount(parseInt(e.target.value) || 0)} 
             />
           </div>
-          <Button onClick={handleGenerate} className="bg-orange-600 hover:bg-orange-700">
+          <Button onClick={handleGenerate} className="bg-blue-600 hover:bg-blue-700">
             <QrCode className="mr-2 h-4 w-4" />
-            Üret
+            Üret / Güncelle
           </Button>
           {generated && (
             <Button variant="outline" onClick={handlePrint}>
@@ -66,7 +79,7 @@ export function AdminQRCodes() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 print:grid-cols-3 print:gap-8">
           {Array.from({ length: tableCount }).map((_, i) => {
             const tableName = `Masa ${i + 1}`;
-            const qrUrl = `${baseUrl}/order?table=${encodeURIComponent(tableName)}`;
+            const qrUrl = `${baseUrl}/?table=${encodeURIComponent(tableName)}`;
             
             return (
               <motion.div

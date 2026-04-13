@@ -1,16 +1,31 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Minus, ShoppingCart, ChevronRight } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, ChevronRight, AlertCircle, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 
 export function Menu() {
-  const { menuItems, cart, addToCart, removeFromCart, total } = useCart();
+  const { menuItems, cart, addToCart, removeFromCart, total, orders } = useCart();
   const [activeCategory, setActiveCategory] = useState<string>('Tümü');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const urlTable = searchParams.get('table');
+  const currentTable = urlTable || localStorage.getItem('current_table');
+
+  useEffect(() => {
+    if (urlTable) {
+      localStorage.setItem('current_table', urlTable);
+    }
+  }, [urlTable]);
+
+  // Check if there is a pending order for this table
+  const pendingOrder = currentTable ? orders.find(o => o.table === currentTable && o.status === 'Ödeme Bekleniyor') : undefined;
 
   const categories = ['Tümü', ...Array.from(new Set(menuItems.map((item) => item.category)))];
 
@@ -22,6 +37,14 @@ export function Menu() {
 
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleAddToCart = (itemId: string) => {
+    if (!currentTable) {
+      toast.error("Lütfen sipariş vermek için masanızdaki QR kodu okutun.");
+      return;
+    }
+    addToCart(itemId);
   };
 
   return (
@@ -53,6 +76,38 @@ export function Menu() {
         </div>
       </div>
 
+      {!currentTable && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm"
+        >
+          <QrCode className="text-amber-600 h-6 w-6 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-900">QR Kod Okutulmadı</h3>
+            <p className="text-amber-700 text-sm mt-1">
+              Sipariş verebilmek ve garson çağırabilmek için lütfen masanızdaki QR kodu telefonunuzun kamerasıyla okutun.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {pendingOrder && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3"
+        >
+          <AlertCircle className="text-blue-600 h-6 w-6 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-blue-900">Ödenmeyi Bekleyen Hesap Var</h3>
+            <p className="text-blue-700 text-sm mt-1">
+              Masada ortak bir hesap oluşturulmuş. Kalan Tutar: <span className="font-bold">₺{(pendingOrder.remainingAmount || 0).toFixed(2)}</span>
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item, index) => {
           const cartItem = cart.find((c) => c.id === item.id);
@@ -77,7 +132,7 @@ export function Menu() {
                 <CardHeader className="p-5 pb-0">
                   <div className="flex items-start justify-between gap-4">
                     <CardTitle className="text-xl">{item.name}</CardTitle>
-                    <span className="font-semibold text-orange-600">₺{item.price}</span>
+                    <span className="font-semibold text-blue-600">₺{item.price}</span>
                   </div>
                   <CardDescription className="mt-2 text-sm text-slate-500">
                     {item.description.length > 80 && !expandedItems[item.id] ? (
@@ -85,7 +140,7 @@ export function Menu() {
                         {item.description.slice(0, 80)}...
                         <button 
                           onClick={() => toggleExpand(item.id)}
-                          className="text-orange-600 font-medium ml-1 hover:underline focus:outline-none"
+                          className="text-blue-600 font-medium ml-1 hover:underline focus:outline-none"
                         >
                           devamı...
                         </button>
@@ -96,7 +151,7 @@ export function Menu() {
                         {item.description.length > 80 && (
                           <button 
                             onClick={() => toggleExpand(item.id)}
-                            className="text-orange-600 font-medium ml-1 hover:underline focus:outline-none"
+                            className="text-blue-600 font-medium ml-1 hover:underline focus:outline-none"
                           >
                             kısalt
                           </button>
@@ -107,21 +162,21 @@ export function Menu() {
                 </CardHeader>
                 <CardFooter className="p-5 pt-4 mt-auto">
                   {quantity > 0 ? (
-                    <div className="flex w-full items-center justify-between rounded-full bg-orange-50 p-1">
+                    <div className="flex w-full items-center justify-between rounded-full bg-blue-50 p-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full text-orange-600 hover:bg-orange-200 hover:text-orange-700"
+                        className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-700"
                         onClick={() => removeFromCart(item.id)}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
-                      <span className="font-semibold text-orange-900 w-8 text-center">{quantity}</span>
+                      <span className="font-semibold text-blue-900 w-8 text-center">{quantity}</span>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-full text-orange-600 hover:bg-orange-200 hover:text-orange-700"
-                        onClick={() => addToCart(item.id)}
+                        className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-700"
+                        onClick={() => handleAddToCart(item.id)}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -129,7 +184,7 @@ export function Menu() {
                   ) : (
                     <Button 
                       className="w-full rounded-full bg-slate-900 text-white hover:bg-slate-800" 
-                      onClick={() => addToCart(item.id)}
+                      onClick={() => handleAddToCart(item.id)}
                     >
                       <ShoppingCart className="mr-2 h-4 w-4" />
                       Sepete Ekle
@@ -143,7 +198,7 @@ export function Menu() {
       </div>
 
       <AnimatePresence>
-        {cart.length > 0 && (
+        {(cart.length > 0 || pendingOrder) && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -152,15 +207,24 @@ export function Menu() {
           >
             <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <span className="text-sm text-slate-500 font-medium">{cartItemCount} ürün</span>
-                <span className="text-xl font-bold text-orange-600">₺{total.toFixed(2)}</span>
+                {pendingOrder ? (
+                  <>
+                    <span className="text-sm text-blue-600 font-medium">Ortak Hesap</span>
+                    <span className="text-xl font-bold text-blue-600">Kalan: ₺{(pendingOrder.remainingAmount || 0).toFixed(2)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm text-slate-500 font-medium">{cartItemCount} ürün</span>
+                    <span className="text-xl font-bold text-blue-600">₺{total.toFixed(2)}</span>
+                  </>
+                )}
               </div>
               <Button 
                 size="lg" 
-                className="rounded-full bg-orange-600 hover:bg-orange-700 text-white px-8"
-                onClick={() => navigate('/order')}
+                className={`rounded-full px-8 ${pendingOrder ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                onClick={() => navigate(pendingOrder ? '/payment' : '/order')}
               >
-                Sepete Git
+                {pendingOrder ? 'Ödemeye Katıl' : 'Sepete Git'}
                 <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             </div>

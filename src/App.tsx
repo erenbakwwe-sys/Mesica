@@ -12,8 +12,21 @@ import { Order } from './pages/Order';
 import { Payment } from './pages/Payment';
 import { Admin } from './pages/Admin';
 import { Toaster } from 'sonner';
+import { useEffect } from 'react';
 
 export default function App() {
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      // Sadece kullanıcı etkileşimiyle izin istemek daha iyidir, 
+      // ancak kullanıcının isteği üzerine siteye girer girmez soruyoruz.
+      const requestPerm = () => {
+        Notification.requestPermission();
+        document.removeEventListener('click', requestPerm);
+      };
+      document.addEventListener('click', requestPerm);
+    }
+  }, []);
+
   return (
     <CartProvider>
       <Router>

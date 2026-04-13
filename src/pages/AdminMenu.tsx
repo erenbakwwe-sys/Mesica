@@ -226,7 +226,7 @@ export function AdminMenu() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Wand2 className="h-5 w-5 text-orange-500" />
+              <Wand2 className="h-5 w-5 text-blue-500" />
               Yapay Zeka ile Ürün Ekle
             </CardTitle>
             <CardDescription>
@@ -268,13 +268,13 @@ export function AdminMenu() {
                 <div className="relative z-10 flex flex-col items-center">
                   {isAnalyzing ? (
                     <>
-                      <Loader2 className="h-10 w-10 text-orange-500 animate-spin mb-2" />
+                      <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-2" />
                       <p className="text-sm font-medium text-slate-700">Yapay Zeka Analiz Ediyor...</p>
                     </>
                   ) : (
                     <>
-                      <div className="bg-orange-100 p-3 rounded-full mb-3">
-                        <ImageIcon className="h-6 w-6 text-orange-600" />
+                      <div className="bg-blue-100 p-3 rounded-full mb-3">
+                        <ImageIcon className="h-6 w-6 text-blue-600" />
                       </div>
                       <p className="text-sm font-medium text-slate-700">Resim Yükle veya Sürükle</p>
                       <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP</p>
@@ -370,7 +370,7 @@ export function AdminMenu() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={handleSave} disabled={isAnalyzing || isGenerating}>
+            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleSave} disabled={isAnalyzing || isGenerating}>
               <Plus className="mr-2 h-4 w-4" />
               Menüye Ekle
             </Button>
@@ -396,7 +396,7 @@ export function AdminMenu() {
                   <div className="flex justify-between items-start mb-1">
                     <h4 className="font-semibold text-slate-900 truncate pr-2">{item.name}</h4>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-orange-600">₺{item.price}</span>
+                      <span className="font-bold text-blue-600">₺{item.price}</span>
                       <Button 
                         variant="ghost" 
                         size="icon" 

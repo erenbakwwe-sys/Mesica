@@ -4,7 +4,7 @@ import { useCart, PaymentMethod } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
-import { BellRing, CheckCircle2, ChevronRight, Minus, Plus, ShoppingBag, Trash2, CreditCard, Banknote, Loader2, MessageSquarePlus } from 'lucide-react';
+import { BellRing, CheckCircle2, ChevronRight, Minus, Plus, ShoppingBag, Trash2, CreditCard, Banknote, Loader2, MessageSquarePlus, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function Order() {
@@ -12,7 +12,7 @@ export function Order() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
-  const [tableNumber, setTableNumber] = useState('Masa 1');
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Kart');
@@ -22,32 +22,24 @@ export function Order() {
 
   useEffect(() => {
     const tableParam = searchParams.get('table');
+    const storedTable = localStorage.getItem('current_table');
     if (tableParam) {
       setTableNumber(tableParam);
+    } else if (storedTable) {
+      setTableNumber(storedTable);
     }
   }, [searchParams]);
 
   const handleCallWaiter = () => {
+    if (!tableNumber) return;
     callWaiter(tableNumber);
     setWaiterCalled(true);
     setTimeout(() => setWaiterCalled(false), 3000);
   };
 
   const handlePlaceOrder = () => {
-    const finalNote = wantsNote ? note : '';
-    if (paymentMethod === 'Kart') {
-      setIsProcessing(true);
-      // Simulate payment processing
-      setTimeout(() => {
-        setIsProcessing(false);
-        placeOrder(tableNumber, paymentMethod, finalNote);
-        setOrderPlaced(true);
-      }, 2000);
-    } else {
-      // Cash payment, place order immediately
-      placeOrder(tableNumber, paymentMethod, finalNote || 'Nakit ödenecek');
-      setOrderPlaced(true);
-    }
+    if (!tableNumber) return;
+    navigate(`/payment?table=${encodeURIComponent(tableNumber)}`);
   };
 
   if (orderPlaced) {
@@ -78,32 +70,43 @@ export function Order() {
       transition={{ duration: 0.3 }}
       className="mx-auto max-w-3xl pb-12"
     >
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl bg-orange-50 p-6 gap-4">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl bg-blue-50 p-6 gap-4">
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <select 
-              value={tableNumber} 
-              onChange={(e) => setTableNumber(e.target.value)}
-              className="bg-white border border-orange-200 text-slate-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-2"
-            >
-              {tables.map(t => (
-                <option key={t.id} value={t.name}>{t.name}</option>
-              ))}
-            </select>
-            <span className="text-2xl font-bold tracking-tight text-slate-900">– Dijital Menü</span>
+            {tableNumber ? (
+              <span className="text-2xl font-bold tracking-tight text-slate-900">{tableNumber} – Dijital Menü</span>
+            ) : (
+              <span className="text-2xl font-bold tracking-tight text-slate-900">Dijital Menü</span>
+            )}
           </div>
           <p className="text-slate-500">Garson Çağır</p>
         </div>
         <Button
           variant={waiterCalled ? "default" : "outline"}
-          className={`rounded-full transition-all ${waiterCalled ? 'bg-green-600 hover:bg-green-700 text-white border-none' : 'border-orange-200 text-orange-600 hover:bg-orange-100'}`}
+          className={`rounded-full transition-all ${waiterCalled ? 'bg-green-600 hover:bg-green-700 text-white border-none' : 'border-blue-200 text-blue-600 hover:bg-blue-100'}`}
           onClick={handleCallWaiter}
-          disabled={waiterCalled}
+          disabled={waiterCalled || !tableNumber}
         >
           <BellRing className="mr-2 h-4 w-4" />
           {waiterCalled ? 'Garson Çağrıldı' : 'Garsonu Çağır'}
         </Button>
       </div>
+
+      {!tableNumber && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm mb-8"
+        >
+          <QrCode className="text-amber-600 h-6 w-6 shrink-0 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-amber-900">QR Kod Okutulmadı</h3>
+            <p className="text-amber-700 text-sm mt-1">
+              Sipariş verebilmek ve garson çağırabilmek için lütfen masanızdaki QR kodu telefonunuzun kamerasıyla okutun.
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {cart.length === 0 ? (
         <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 text-center py-16">
@@ -113,7 +116,7 @@ export function Order() {
             </div>
             <CardTitle className="mb-2">Sepetiniz Boş</CardTitle>
             <CardDescription className="mb-6">Sipariş vermek için menüden ürün ekleyin.</CardDescription>
-            <Button onClick={() => navigate('/menu')} className="rounded-full">
+            <Button onClick={() => navigate('/menu')} className="rounded-full bg-blue-600 hover:bg-blue-700">
               Menüye Dön
             </Button>
           </CardContent>
@@ -123,7 +126,7 @@ export function Order() {
           <Card className="overflow-hidden border-none shadow-md">
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
               <CardTitle className="flex items-center gap-2 text-xl">
-                <ShoppingBag className="h-5 w-5 text-orange-600" />
+                <ShoppingBag className="h-5 w-5 text-blue-600" />
                 Sipariş Özeti
               </CardTitle>
             </CardHeader>
@@ -150,7 +153,7 @@ export function Order() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-l-full text-slate-500 hover:text-orange-600"
+                            className="h-8 w-8 rounded-l-full text-slate-500 hover:text-blue-600"
                             onClick={() => removeFromCart(item.id)}
                             disabled={isProcessing}
                           >
@@ -160,7 +163,7 @@ export function Order() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-r-full text-slate-500 hover:text-orange-600"
+                            className="h-8 w-8 rounded-r-full text-slate-500 hover:text-blue-600"
                             onClick={() => addToCart(item.id)}
                             disabled={isProcessing}
                           >
@@ -184,7 +187,7 @@ export function Order() {
               {!wantsNote ? (
                 <Button 
                   variant="outline" 
-                  className="w-full border-dashed border-2 text-slate-500 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50"
+                  className="w-full border-dashed border-2 text-slate-500 hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50"
                   onClick={() => setWantsNote(true)}
                   disabled={isProcessing}
                 >
@@ -227,49 +230,25 @@ export function Order() {
           </Card>
 
           <Card className="border-none shadow-md">
-            <CardHeader>
-              <CardTitle className="text-lg">Ödeme Yöntemi</CardTitle>
-              <CardDescription>Nasıl ödemek istersiniz?</CardDescription>
-            </CardHeader>
-            <CardContent className="flex gap-4">
-              <Button
-                variant={paymentMethod === 'Kart' ? 'default' : 'outline'}
-                className={`flex-1 h-14 ${paymentMethod === 'Kart' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
-                onClick={() => setPaymentMethod('Kart')}
-                disabled={isProcessing}
-              >
-                <CreditCard className="mr-2 h-5 w-5" />
-                Kredi Kartı
-              </Button>
-              <Button
-                variant={paymentMethod === 'Nakit' ? 'default' : 'outline'}
-                className={`flex-1 h-14 ${paymentMethod === 'Nakit' ? 'bg-orange-600 hover:bg-orange-700' : ''}`}
-                onClick={() => setPaymentMethod('Nakit')}
-                disabled={isProcessing}
-              >
-                <Banknote className="mr-2 h-5 w-5" />
-                Nakit
-              </Button>
-            </CardContent>
-            <CardFooter className="flex-col items-stretch border-t border-slate-100 bg-slate-50/50 p-6 gap-6">
+            <CardFooter className="flex-col items-stretch bg-slate-50/50 p-6 gap-6">
               <div className="flex items-center justify-between text-lg font-semibold text-slate-900">
                 <span>Toplam Tutar</span>
-                <span className="text-2xl text-orange-600">₺{total.toFixed(2)}</span>
+                <span className="text-2xl text-blue-600">₺{total.toFixed(2)}</span>
               </div>
               <Button 
                 size="lg" 
                 className="w-full rounded-full h-14 text-base bg-slate-900 hover:bg-slate-800 text-white" 
                 onClick={handlePlaceOrder}
-                disabled={isProcessing}
+                disabled={isProcessing || !tableNumber}
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Ödeme Alınıyor...
+                    İşleniyor...
                   </>
                 ) : (
                   <>
-                    Siparişi Onayla ve Öde
+                    Ödeme Ekranına Geç
                     <ChevronRight className="ml-2 h-5 w-5" />
                   </>
                 )}

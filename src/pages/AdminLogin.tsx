@@ -54,8 +54,8 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     >
       <Card className="w-full max-w-md border-none shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100">
-            <Lock className="h-6 w-6 text-orange-600" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+            <Lock className="h-6 w-6 text-blue-600" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Admin Girişi</CardTitle>
           <CardDescription>
@@ -97,7 +97,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700">
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
               Giriş Yap
             </Button>
           </CardFooter>

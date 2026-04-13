@@ -7,18 +7,31 @@ import { motion } from 'motion/react';
 export function AdminDashboard() {
   const { orders } = useCart();
 
-  // Filter only paid orders for revenue calculations
-  const paidOrders = orders.filter(o => o.status === 'Ödendi');
-
   // Calculate metrics
-  const todayOrders = paidOrders.filter(o => isToday(new Date(o.createdAt)));
-  const todayRevenue = todayOrders.reduce((sum, o) => sum + o.total, 0);
+  const getRevenue = (ordersList: typeof orders, dateFilter: (date: Date) => boolean) => {
+    return ordersList
+      .filter(o => dateFilter(new Date(o.createdAt)))
+      .reduce((sum, o) => {
+        if (o.status === 'Ödeme Bekleniyor') {
+          return sum + (o.paidAmount || 0);
+        }
+        // If not 'Ödeme Bekleniyor', it means it's fully paid (either initially or completed later)
+        return sum + o.total;
+      }, 0);
+  };
 
-  const weekOrders = paidOrders.filter(o => isThisWeek(new Date(o.createdAt), { weekStartsOn: 1 }));
-  const weekRevenue = weekOrders.reduce((sum, o) => sum + o.total, 0);
+  const getOrderCount = (ordersList: typeof orders, dateFilter: (date: Date) => boolean) => {
+    return ordersList.filter(o => dateFilter(new Date(o.createdAt))).length;
+  };
 
-  const monthOrders = paidOrders.filter(o => isThisMonth(new Date(o.createdAt)));
-  const monthRevenue = monthOrders.reduce((sum, o) => sum + o.total, 0);
+  const todayRevenue = getRevenue(orders, isToday);
+  const todayOrdersCount = getOrderCount(orders, isToday);
+
+  const weekRevenue = getRevenue(orders, (d) => isThisWeek(d, { weekStartsOn: 1 }));
+  const weekOrdersCount = getOrderCount(orders, (d) => isThisWeek(d, { weekStartsOn: 1 }));
+
+  const monthRevenue = getRevenue(orders, isThisMonth);
+  const monthOrdersCount = getOrderCount(orders, isThisMonth);
 
   const activeOrdersCount = orders.filter(o => o.status !== 'Ödendi').length;
 
@@ -26,7 +39,7 @@ export function AdminDashboard() {
     {
       title: "Günlük Ciro",
       value: `₺${todayRevenue.toFixed(2)}`,
-      description: `${todayOrders.length} sipariş tamamlandı`,
+      description: `${todayOrdersCount} sipariş tamamlandı`,
       icon: Banknote,
       color: "text-green-600",
       bg: "bg-green-100"
@@ -34,7 +47,7 @@ export function AdminDashboard() {
     {
       title: "Haftalık Ciro",
       value: `₺${weekRevenue.toFixed(2)}`,
-      description: `Bu hafta ${weekOrders.length} sipariş`,
+      description: `Bu hafta ${weekOrdersCount} sipariş`,
       icon: TrendingUp,
       color: "text-blue-600",
       bg: "bg-blue-100"
@@ -42,7 +55,7 @@ export function AdminDashboard() {
     {
       title: "Aylık Ciro",
       value: `₺${monthRevenue.toFixed(2)}`,
-      description: `Bu ay ${monthOrders.length} sipariş`,
+      description: `Bu ay ${monthOrdersCount} sipariş`,
       icon: Activity,
       color: "text-purple-600",
       bg: "bg-purple-100"
@@ -52,8 +65,8 @@ export function AdminDashboard() {
       value: activeOrdersCount.toString(),
       description: "Şu an hazırlanan/bekleyen",
       icon: ShoppingCart,
-      color: "text-orange-600",
-      bg: "bg-orange-100"
+      color: "text-blue-600",
+      bg: "bg-blue-100"
     }
   ];
 
