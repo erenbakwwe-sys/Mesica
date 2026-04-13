@@ -36,7 +36,7 @@ export function AdminQRCodes() {
     window.print();
   };
 
-  const baseUrl = 'https://mesica.vercel.app';
+  const baseUrl = 'https://izmirdenizrestaurant.vercel.app';
 
   return (
     <div className="space-y-6">
