@@ -3,7 +3,7 @@ import { useCart, Expense } from '../context/CartContext';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
-import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Wallet, DollarSign, Calendar, Landmark, FileText } from 'lucide-react';
+import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Wallet, DollarSign, Calendar, Landmark, FileText, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export function AdminProfitLoss() {
@@ -53,6 +53,14 @@ export function AdminProfitLoss() {
 
   // 4. Calculate Custom Operational Expenses
   const totalCustomExpenses = expenses ? expenses.reduce((sum, e) => sum + e.amount, 0) : 0;
+
+  // 5. Calculate Total Tips
+  const totalTips = orders ? orders.reduce((sum, o) => {
+    if (o.payments) {
+      return sum + o.payments.reduce((pSum, p) => pSum + (p.tip || 0), 0);
+    }
+    return sum;
+  }, 0) : 0;
 
   // Total Expenses (Sum of Staff, Stock Assets purchased, and Custom logged expenses)
   const totalExpenses = totalStaffCost + totalStockCost + totalCustomExpenses;
@@ -106,7 +114,7 @@ export function AdminProfitLoss() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Revenue */}
         <Card className="card-3d border-none bg-neutral-900/60 p-5 flex flex-col justify-between">
           <CardHeader className="p-0 pb-3 flex flex-row justify-between items-center space-y-0">
@@ -160,6 +168,20 @@ export function AdminProfitLoss() {
           <CardContent className="p-0">
             <div className="text-2xl font-black text-white">₺{totalCustomExpenses.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <p className="text-xs text-neutral-500 font-semibold mt-1">Kira, faturalar ve diğer giderler</p>
+          </CardContent>
+        </Card>
+
+        {/* Total Tips card */}
+        <Card className="card-3d border-none bg-neutral-900/60 p-5 flex flex-col justify-between">
+          <CardHeader className="p-0 pb-3 flex flex-row justify-between items-center space-y-0">
+            <CardTitle className="text-xs font-black uppercase tracking-wider text-neutral-400">Toplam Bahşiş</CardTitle>
+            <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/15">
+              <Sparkles className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="text-2xl font-black text-white">₺{totalTips.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <p className="text-xs text-neutral-500 font-semibold mt-1">Ekibe bırakılan toplam bahşiş</p>
           </CardContent>
         </Card>
       </div>

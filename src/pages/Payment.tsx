@@ -36,6 +36,9 @@ export function Payment() {
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponError, setCouponError] = useState('');
 
+  const [tipSelection, setTipSelection] = useState<'none' | '10' | '15' | '20' | 'custom'>('none');
+  const [customTip, setCustomTip] = useState('');
+
   // Get current table from localStorage or URL
   const searchParams = new URLSearchParams(location.search);
   const urlTable = searchParams.get('table');
@@ -67,6 +70,16 @@ export function Payment() {
     : splitType === 'equal' 
       ? amountToPay / splitCount 
       : parseFloat(customAmount) || 0;
+
+  const tipAmount = tipSelection === 'none'
+    ? 0
+    : tipSelection === '10'
+      ? currentPaymentAmount * 0.10
+      : tipSelection === '15'
+        ? currentPaymentAmount * 0.15
+        : tipSelection === '20'
+          ? currentPaymentAmount * 0.20
+          : parseFloat(customTip) || 0;
 
   const applyCouponCode = () => {
     setCouponError('');
@@ -112,7 +125,7 @@ export function Payment() {
     setIsProcessing(true);
     
     try {
-      await addPaymentToTableOrders(currentTable, currentPaymentAmount, paymentMethod);
+      await addPaymentToTableOrders(currentTable, currentPaymentAmount, paymentMethod, tipAmount);
       setIsProcessing(false);
       setIsSuccess(true);
     } catch (error) {
@@ -196,10 +209,17 @@ export function Payment() {
   };
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && isScanning) {
+        cancelScan();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       stopCamera();
     };
-  }, []);
+  }, [isScanning]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -425,6 +445,60 @@ export function Payment() {
                 </div>
               )}
             </div>
+
+            {/* Bahşiş Sistemi Section */}
+            <div className="mt-5 pt-4 border-t border-amber-950/10">
+              <label className="mb-2 block text-[10px] font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#dcae61]" /> Ekibe Bahşiş Bırakın
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  { id: 'none', label: 'Yok' },
+                  { id: '10', label: '%10' },
+                  { id: '15', label: '%15' },
+                  { id: '20', label: '%20' },
+                  { id: 'custom', label: 'Özel' }
+                ].map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      setTipSelection(option.id as any);
+                      if (option.id !== 'custom') {
+                        setCustomTip('');
+                      }
+                    }}
+                    className={`h-9 rounded-xl border text-[11px] font-bold transition-all ${
+                      tipSelection === option.id
+                        ? 'bg-[#dcae61] text-neutral-950 border-[#dcae61] shadow-lg shadow-amber-500/10'
+                        : 'bg-neutral-900/60 text-neutral-300 border-amber-950/20 hover:border-amber-900/30'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+
+              {tipSelection === 'custom' && (
+                <div className="mt-3 flex items-center gap-2 bg-neutral-950/50 px-3.5 h-11 rounded-xl border border-amber-950/20 shadow-inner">
+                  <span className="text-[#dcae61] font-bold text-xs">₺</span>
+                  <input
+                    type="number"
+                    value={customTip}
+                    onChange={(e) => setCustomTip(e.target.value)}
+                    placeholder="Bahşiş tutarı girin"
+                    className="flex-1 bg-transparent border-none focus:outline-none text-xs font-bold text-[#dcae61]"
+                  />
+                </div>
+              )}
+
+              {tipAmount > 0 && (
+                <div className="mt-3 flex justify-between items-center bg-amber-500/5 border border-amber-500/10 rounded-xl p-2.5 text-xs">
+                  <span className="text-neutral-400 font-semibold">Hesaplanmış Bahşiş:</span>
+                  <span className="font-bold text-[#dcae61]">+₺{tipAmount.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -641,7 +715,15 @@ export function Payment() {
             disabled={isProcessing || currentPaymentAmount <= 0 || currentPaymentAmount > amountToPay}
             className="w-full button-3d-primary rounded-full h-14 text-xs sm:text-sm uppercase font-bold tracking-widest"
           >
-            {isProcessing ? 'Ödeme İşleniyor...' : `₺${currentPaymentAmount.toFixed(2)} Sanal POS ile Öde`}
+            {isProcessing 
+              ? 'Ödeme İşleniyor...' 
+              : `₺${(currentPaymentAmount + tipAmount).toFixed(2)} ${
+                  paymentMethod === 'Kart' 
+                    ? 'Sanal POS ile Öde' 
+                    : paymentMethod === 'POS' 
+                      ? 'Fiziksel POS Talep Et' 
+                      : 'Garson Çağır ve Öde'
+                }`}
           </Button>
         </CardFooter>
       </Card>

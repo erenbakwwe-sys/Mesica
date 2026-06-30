@@ -49,6 +49,7 @@ export interface PaymentRecord {
   method: PaymentMethod;
   amount: number;
   date: Date;
+  tip?: number;
 }
 
 export interface Order {
@@ -142,7 +143,9 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  if (operationType !== OperationType.LIST) {
+    throw new Error(JSON.stringify(errInfo));
+  }
 }
 
 export interface CartContextType {
@@ -157,8 +160,8 @@ export interface CartContextType {
   orders: Order[];
   placeOrder: (table: string, paymentMethod: PaymentMethod, note?: string, paidAmount?: number) => Promise<string | undefined>;
   placeWaiterOrder: (table: string, items: CartItem[], note?: string) => Promise<string | undefined>;
-  addPaymentToOrder: (orderId: string, amount: number, method: PaymentMethod) => Promise<void>;
-  addPaymentToTableOrders: (tableName: string, amount: number, method: PaymentMethod) => Promise<void>;
+  addPaymentToOrder: (orderId: string, amount: number, method: PaymentMethod, tipAmount?: number) => Promise<void>;
+  addPaymentToTableOrders: (tableName: string, amount: number, method: PaymentMethod, tipAmount?: number) => Promise<void>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   deleteOrder: (orderId: string) => void;
   callWaiter: (table: string) => void;
@@ -571,7 +574,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addPaymentToOrder = async (orderId: string, amount: number, method: PaymentMethod) => {
+  const addPaymentToOrder = async (orderId: string, amount: number, method: PaymentMethod, tipAmount: number = 0) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
@@ -579,7 +582,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const newRemainingAmount = Math.max(0, order.total - newPaidAmount);
     const isFullyPaid = newRemainingAmount <= 0;
 
-    const newPaymentRecord = { method, amount, date: new Date() };
+    const newPaymentRecord = { method, amount, date: new Date(), tip: tipAmount };
 
     try {
       await updateDoc(doc(db, 'orders', orderId), {
@@ -600,7 +603,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const addPaymentToTableOrders = async (tableName: string, amount: number, method: PaymentMethod) => {
+  const addPaymentToTableOrders = async (tableName: string, amount: number, method: PaymentMethod, tipAmount: number = 0) => {
     // Find all active table orders that are not paid
     const tableOrders = orders.filter(o => o.table === tableName && o.status !== 'Ödendi');
     // Sort oldest first
@@ -611,16 +614,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
 
     let remainingPayment = amount;
+    let remainingTip = tipAmount;
 
     try {
+      let isFirst = true;
       for (const order of tableOrders) {
-        if (remainingPayment <= 0) break;
+        if (remainingPayment <= 0 && remainingTip <= 0) break;
 
         const currentUnpaid = order.remainingAmount !== undefined ? order.remainingAmount : order.total;
-        if (currentUnpaid <= 0) continue;
+        
+        // If the order is already fully paid, but we still have a tip to attach (e.g. they pay tip at the very end),
+        // we can still attach the tip to this order's payments list!
+        if (currentUnpaid <= 0 && remainingTip <= 0) continue;
 
-        const recordAmount = Math.min(remainingPayment, currentUnpaid);
-        const orderPaidRecord = { method, amount: recordAmount, date: new Date() };
+        const recordAmount = Math.min(remainingPayment, Math.max(0, currentUnpaid));
+        const orderTip = isFirst ? remainingTip : 0;
+        if (isFirst) {
+          remainingTip = 0;
+          isFirst = false;
+        }
+
+        const orderPaidRecord = { method, amount: recordAmount, date: new Date(), tip: orderTip };
         const newPayments = [...(order.payments || []), orderPaidRecord];
 
         if (remainingPayment >= currentUnpaid) {
@@ -631,10 +645,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
             payments: newPayments,
             status: 'Ödendi' as OrderStatus
           });
-          remainingPayment -= currentUnpaid;
+          remainingPayment -= Math.max(0, currentUnpaid);
         } else {
           const newPaidAmount = (order.paidAmount || 0) + remainingPayment;
-          const newRemainingAmount = currentUnpaid - remainingPayment;
+          const newRemainingAmount = Math.max(0, currentUnpaid - remainingPayment);
           await updateDoc(doc(db, 'orders', order.id), {
             paidAmount: newPaidAmount,
             remainingAmount: newRemainingAmount,
@@ -648,9 +662,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const updatedTableOrders = orders.filter(o => o.table === tableName && o.status !== 'Ödendi');
       const isTableFullyPaid = updatedTableOrders.length === 0 || updatedTableOrders.every(o => (o.remainingAmount || 0) <= 0);
       if (isTableFullyPaid) {
-        toast.success("Masanın tüm hesabı başarıyla ödendi!");
+        if (tipAmount > 0) {
+          toast.success(`Masa hesabı ve ₺${tipAmount.toFixed(2)} bahşiş başarıyla ödendi!`);
+        } else {
+          toast.success("Masanın tüm hesabı başarıyla ödendi!");
+        }
       } else {
-        toast.success(`₺${amount.toFixed(2)} ödeme alındı.`);
+        if (tipAmount > 0) {
+          toast.success(`₺${amount.toFixed(2)} ödeme ve ₺${tipAmount.toFixed(2)} bahşiş alındı.`);
+        } else {
+          toast.success(`₺${amount.toFixed(2)} ödeme alındı.`);
+        }
       }
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `orders_combined_${tableName}`);
