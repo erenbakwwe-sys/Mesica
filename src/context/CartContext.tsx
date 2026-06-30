@@ -131,6 +131,7 @@ interface FirestoreErrorInfo {
 }
 
 let globalOnFirestoreError: ((error: unknown, operationType: OperationType, path: string | null) => void) | null = null;
+const syncChannel = typeof window !== 'undefined' ? new BroadcastChannel('izmir_deniz_sync') : null;
 
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
@@ -230,6 +231,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
 
+  const playSoundWithSync = (soundName: string) => {
+    playSound(soundName as any);
+    syncChannel?.postMessage({ type: 'PLAY_SOUND', sound: soundName });
+  };
+
   // Register global onFirestoreError callback to handle quota limit exceeded
   useEffect(() => {
     globalOnFirestoreError = (err, opType, path) => {
@@ -243,6 +249,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (localStorage.getItem('firebase_quota_fallback') !== 'true') {
           localStorage.setItem('firebase_quota_fallback', 'true');
           setUseLocalFallback(true);
+          syncChannel?.postMessage({ type: 'FALLBACK_TOGGLED', value: true });
           toast.error("Firestore kotası aşıldı! Uygulama kesintisiz çalışabilmek için otomatik olarak yerel depolama (Offline/LocalStorage) moduna geçirildi.", { duration: 10000 });
         }
       }
@@ -252,44 +259,122 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Synchronize state across tabs when using local fallback
+  useEffect(() => {
+    if (!syncChannel) return;
+
+    const handleSyncMessage = (event: MessageEvent) => {
+      const { type, key, data } = event.data;
+      if (type === 'SYNC_DATA') {
+        if (!useLocalFallback) return;
+        switch (key) {
+          case 'fallback_menu':
+            setMenuItems(data);
+            break;
+          case 'fallback_tables':
+            setTables(data);
+            break;
+          case 'fallback_orders':
+            const parsedOrders = data.map((o: any) => ({
+              ...o,
+              createdAt: new Date(o.createdAt),
+              payments: o.payments ? o.payments.map((p: any) => ({ ...p, date: new Date(p.date) })) : []
+            }));
+            setOrders(parsedOrders);
+            break;
+          case 'fallback_waiter_calls':
+            const parsedCalls = data.map((c: any) => ({
+              ...c,
+              time: new Date(c.time)
+            }));
+            setWaiterCalls(parsedCalls);
+            break;
+          case 'fallback_staff':
+            setStaff(data);
+            break;
+          case 'fallback_stock':
+            const parsedStock = data.map((s: any) => ({
+              ...s,
+              lastUpdated: new Date(s.lastUpdated)
+            }));
+            setStock(parsedStock);
+            break;
+          case 'fallback_expenses':
+            const parsedExpenses = data.map((e: any) => ({
+              ...e,
+              date: new Date(e.date)
+            }));
+            setExpenses(parsedExpenses);
+            break;
+          case 'fallback_coupons':
+            const parsedCoupons = data.map((cp: any) => ({
+              ...cp,
+              expiryDate: cp.expiryDate ? new Date(cp.expiryDate) : null
+            }));
+            setCoupons(parsedCoupons);
+            break;
+          default:
+            break;
+        }
+      } else if (type === 'FALLBACK_TOGGLED') {
+        setUseLocalFallback(event.data.value);
+      } else if (type === 'PLAY_SOUND') {
+        playSound(event.data.sound);
+      }
+    };
+
+    syncChannel.addEventListener('message', handleSyncMessage);
+    return () => {
+      syncChannel.removeEventListener('message', handleSyncMessage);
+    };
+  }, [useLocalFallback]);
+
   const saveFallbackMenu = (newMenu: MenuItem[]) => {
     setMenuItems(newMenu);
     localStorage.setItem('fallback_menu', JSON.stringify(newMenu));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_menu', data: newMenu });
   };
 
   const saveFallbackTables = (newTables: Table[]) => {
     setTables(newTables);
     localStorage.setItem('fallback_tables', JSON.stringify(newTables));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_tables', data: newTables });
   };
 
   const saveFallbackOrders = (newOrders: Order[]) => {
     setOrders(newOrders);
     localStorage.setItem('fallback_orders', JSON.stringify(newOrders));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_orders', data: newOrders });
   };
 
   const saveFallbackWaiterCalls = (newCalls: WaiterCall[]) => {
     setWaiterCalls(newCalls);
     localStorage.setItem('fallback_waiter_calls', JSON.stringify(newCalls));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_waiter_calls', data: newCalls });
   };
 
   const saveFallbackStaff = (newStaff: Staff[]) => {
     setStaff(newStaff);
     localStorage.setItem('fallback_staff', JSON.stringify(newStaff));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_staff', data: newStaff });
   };
 
   const saveFallbackStock = (newStock: StockItem[]) => {
     setStock(newStock);
     localStorage.setItem('fallback_stock', JSON.stringify(newStock));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_stock', data: newStock });
   };
 
   const saveFallbackExpenses = (newExpenses: Expense[]) => {
     setExpenses(newExpenses);
     localStorage.setItem('fallback_expenses', JSON.stringify(newExpenses));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_expenses', data: newExpenses });
   };
 
   const saveFallbackCoupons = (newCoupons: Coupon[]) => {
     setCoupons(newCoupons);
     localStorage.setItem('fallback_coupons', JSON.stringify(newCoupons));
+    syncChannel?.postMessage({ type: 'SYNC_DATA', key: 'fallback_coupons', data: newCoupons });
   };
 
   // Load fallback data if active
@@ -717,7 +802,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       clearCart();
       if (!isPartialPayment) {
-        playSound('new_order');
+        playSoundWithSync('new_order');
         toast.success("Siparişiniz mutfağa gönderildi.");
       } else {
         toast.success("Kısmi ödeme alındı, diğer ödemeler bekleniyor.");
@@ -742,7 +827,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       clearCart();
       if (!isPartialPayment) {
-        playSound('new_order');
+        playSoundWithSync('new_order');
         toast.success("Siparişiniz mutfağa gönderildi.");
       } else {
         toast.success("Kısmi ödeme alındı, diğer ödemeler bekleniyor.");
@@ -777,7 +862,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (tableObj && !tableObj.isOpen) {
         saveFallbackTables(tables.map(t => t.id === tableObj.id ? { ...t, isOpen: true, openedAt: new Date() } : t));
       }
-      playSound('new_order');
+      playSoundWithSync('new_order');
       toast.success(`Sipariş girildi (${table})`);
       return localId;
     }
@@ -795,7 +880,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           openedAt: serverTimestamp()
         });
       }
-      playSound('new_order');
+      playSoundWithSync('new_order');
       toast.success(`Sipariş girildi (${table})`);
       return docRef.id;
     } catch (e) {
@@ -824,7 +909,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       
       saveFallbackOrders(updatedOrders);
       if (isFullyPaid) {
-        playSound('new_order');
+        playSoundWithSync('new_order');
         toast.success("Ödeme tamamlandı, sipariş mutfağa gönderildi.");
       } else {
         toast.success(`₺${amount.toFixed(2)} ödeme alındı. Kalan: ₺${newRemainingAmount.toFixed(2)}`);
@@ -841,7 +926,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
 
       if (isFullyPaid) {
-        playSound('new_order');
+        playSoundWithSync('new_order');
         toast.success("Ödeme tamamlandı, sipariş mutfağa gönderildi.");
       } else {
         toast.success(`₺${amount.toFixed(2)} ödeme alındı. Kalan: ₺${newRemainingAmount.toFixed(2)}`);
@@ -1000,13 +1085,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (useLocalFallback) {
       saveFallbackOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
       if (status === 'Hazırlanıyor') {
-        playSound('preparing');
+        playSoundWithSync('preparing');
         toast.info("Sipariş hazırlanıyor");
       } else if (status === 'Hazır') {
-        playSound('ready');
+        playSoundWithSync('ready');
         toast.success("Sipariş hazır!");
       } else if (status === 'Teslim Edildi') {
-        playSound('delivered');
+        playSoundWithSync('delivered');
         toast("Sipariş teslim edildi");
       }
       return;
@@ -1014,13 +1099,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     try {
       await updateDoc(doc(db, 'orders', orderId), { status });
       if (status === 'Hazırlanıyor') {
-        playSound('preparing');
+        playSoundWithSync('preparing');
         toast.info("Sipariş hazırlanıyor");
       } else if (status === 'Hazır') {
-        playSound('ready');
+        playSoundWithSync('ready');
         toast.success("Sipariş hazır!");
       } else if (status === 'Teslim Edildi') {
-        playSound('delivered');
+        playSoundWithSync('delivered');
         toast("Sipariş teslim edildi");
       }
     } catch (e) {
@@ -1053,7 +1138,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (useLocalFallback) {
       saveFallbackWaiterCalls([newCall, ...waiterCalls]);
-      playSound('waiter');
+      playSoundWithSync('waiter');
       toast.success("Garsona bildirim gönderildi.");
       return;
     }
@@ -1063,7 +1148,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ...newCall,
         time: serverTimestamp()
       });
-      playSound('waiter');
+      playSoundWithSync('waiter');
       toast.success("Garsona bildirim gönderildi.");
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'waiter_calls');
