@@ -250,7 +250,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('firebase_quota_fallback', 'true');
           setUseLocalFallback(true);
           syncChannel?.postMessage({ type: 'FALLBACK_TOGGLED', value: true });
-          toast.error("Firestore kotası aşıldı! Uygulama kesintisiz çalışabilmek için otomatik olarak yerel depolama (Offline/LocalStorage) moduna geçirildi.", { duration: 10000 });
+          toast.success("Kesintisiz hizmet için Çevrimdışı / Yerel Depolama (Hızlı Mod) aktif edildi! ✨", { duration: 6000 });
         }
       }
     };
@@ -577,23 +577,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       setOrders(prev => {
         const newOrders = formatted.filter(fo => !prev.some(po => po.id === fo.id));
+        const isAdminUser = typeof window !== 'undefined' && sessionStorage.getItem('izmir_deniz_admin_logged_in') === 'true';
+        const currentCustomerTable = typeof window !== 'undefined' ? localStorage.getItem('current_table') : null;
+
         if (newOrders.length > 0 && prev.length > 0) {
-          playSound('new_order');
-          toast.success(`Yeni sipariş geldi! (${newOrders[0].table})`);
-          sendPushNotification("Yeni Sipariş", `${newOrders[0].table} masasından yeni bir sipariş geldi.`);
+          const isMyTable = currentCustomerTable && newOrders[0].table === currentCustomerTable;
+          if (isAdminUser || isMyTable) {
+            playSound('new_order');
+            if (isAdminUser) {
+              toast.success(`Yeni sipariş geldi! (${newOrders[0].table})`);
+              sendPushNotification("Yeni Sipariş", `${newOrders[0].table} masasından yeni bir sipariş geldi.`);
+            } else {
+              toast.success(`Siparişiniz sisteme girildi! (${currentCustomerTable}) ✨`);
+            }
+          }
         } else {
           formatted.forEach(fo => {
             const existing = prev.find(po => po.id === fo.id);
             if (existing && existing.status !== fo.status) {
-              if (fo.status === 'Hazırlanıyor') {
-                playSound('preparing');
-                toast.info(`Sipariş hazırlanıyor (${fo.table})`);
-              } else if (fo.status === 'Hazır') {
-                playSound('ready');
-                toast.success(`Sipariş hazır! (${fo.table})`);
-              } else if (fo.status === 'Teslim Edildi') {
-                playSound('delivered');
-                toast(`Sipariş teslim edildi (${fo.table})`);
+              const isMyTable = currentCustomerTable && fo.table === currentCustomerTable;
+              if (isAdminUser || isMyTable) {
+                if (fo.status === 'Hazırlanıyor') {
+                  playSound('preparing');
+                  toast.info(isMyTable ? "Siparişiniz hazırlanıyor ☕" : `Sipariş hazırlanıyor (${fo.table})`);
+                } else if (fo.status === 'Hazır') {
+                  playSound('ready');
+                  toast.success(isMyTable ? "Siparişiniz hazır! Afiyet olsun. 🎉" : `Sipariş hazır! (${fo.table})`);
+                } else if (fo.status === 'Teslim Edildi') {
+                  playSound('delivered');
+                  toast(isMyTable ? "Siparişiniz teslim edildi" : `Sipariş teslim edildi (${fo.table})`);
+                }
               }
             }
           });
@@ -622,10 +635,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       setWaiterCalls(prev => {
         const newCalls = formatted.filter(fc => !fc.resolved && !prev.some(pc => pc.id === fc.id));
+        const isAdminUser = typeof window !== 'undefined' && sessionStorage.getItem('izmir_deniz_admin_logged_in') === 'true';
+
         if (newCalls.length > 0 && prev.length > 0) {
-          playSound('waiter');
-          toast.warning(`Garson çağrıldı: ${newCalls[0].table}`);
-          sendPushNotification("Garson Çağrısı", `${newCalls[0].table} garson çağırıyor.`);
+          if (isAdminUser) {
+            playSound('waiter');
+            toast.warning(`Garson çağrıldı: ${newCalls[0].table}`);
+            sendPushNotification("Garson Çağrısı", `${newCalls[0].table} garson çağırıyor.`);
+          }
         }
         return formatted;
       });

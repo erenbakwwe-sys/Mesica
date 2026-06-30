@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Navbar } from './Navbar';
+import { RealtimePaymentOverlay } from './RealtimePaymentOverlay';
 
 export function Layout() {
   const location = useLocation();
@@ -21,6 +22,7 @@ export function Layout() {
       
       <div className="bg-wave-pattern" />
       <Navbar />
+      <RealtimePaymentOverlay />
       <main className="mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 z-10">
         <Outlet />
       </main>
