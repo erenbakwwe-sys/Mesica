@@ -221,63 +221,71 @@ export function AdminMenu() {
   };
 
   return (
-    <div className="grid gap-8 md:grid-cols-3">
+    <div className="grid gap-8 md:grid-cols-3 text-[#f5f2eb]">
       <div className="md:col-span-1">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wand2 className="h-5 w-5 text-blue-500" />
+        <Card className="card-3d border-none bg-neutral-900/40 shadow-xl overflow-hidden">
+          <CardHeader className="border-b border-amber-950/10 bg-neutral-900/20">
+            <CardTitle className="flex items-center gap-2 text-white font-sans text-lg font-black">
+              <Wand2 className="h-5 w-5 text-[#dcae61]" />
               Yapay Zeka ile Ürün Ekle
             </CardTitle>
-            <CardDescription>
-              Bir yemek fotoğrafı yükleyin veya yapay zekaya ürettirin.
+            <CardDescription className="text-neutral-400 font-medium text-xs mt-1">
+              Bir yemek veya içecek fotoğrafı yükleyin ya da yapay zeka ile görsel üreterek ürün detaylarını otomatik oluşturun.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 p-5">
             
             <div className="flex gap-2">
               <Button 
-                variant={imageSource === 'upload' ? 'default' : 'outline'} 
+                variant="ghost"
                 onClick={() => setImageSource('upload')}
-                className="flex-1"
+                className={`flex-1 rounded-xl text-xs font-bold uppercase tracking-wider h-9 ${
+                  imageSource === 'upload'
+                    ? 'bg-[#dcae61] text-stone-950 font-black shadow-md'
+                    : 'border border-amber-950/20 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                }`}
                 size="sm"
               >
-                <ImageIcon className="mr-2 h-4 w-4" />
-                Yükle
+                <ImageIcon className="mr-1.5 h-4 w-4" />
+                Görsel Yükle
               </Button>
               <Button 
-                variant={imageSource === 'generate' ? 'default' : 'outline'} 
+                variant="ghost"
                 onClick={() => setImageSource('generate')}
-                className="flex-1"
+                className={`flex-1 rounded-xl text-xs font-bold uppercase tracking-wider h-9 ${
+                  imageSource === 'generate'
+                    ? 'bg-[#dcae61] text-stone-950 font-black shadow-md'
+                    : 'border border-amber-950/20 text-neutral-400 hover:text-white hover:bg-neutral-800'
+                }`}
                 size="sm"
               >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Üret
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                Görsel Üret
               </Button>
             </div>
 
             {imageSource === 'upload' ? (
               <div 
-                className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors relative overflow-hidden h-48"
+                className="border-2 border-dashed border-amber-950/30 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#dcae61]/30 hover:bg-neutral-950/10 transition-all relative overflow-hidden h-48 bg-neutral-950/20"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {previewImage ? (
-                  <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-50" />
+                  <img src={previewImage} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-40" />
                 ) : null}
                 
                 <div className="relative z-10 flex flex-col items-center">
                   {isAnalyzing ? (
                     <>
-                      <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-2" />
-                      <p className="text-sm font-medium text-slate-700">Yapay Zeka Analiz Ediyor...</p>
+                      <Loader2 className="h-10 w-10 text-[#dcae61] animate-spin mb-2.5" />
+                      <p className="text-sm font-bold text-white">Yapay Zeka Analiz Ediyor...</p>
                     </>
                   ) : (
                     <>
-                      <div className="bg-blue-100 p-3 rounded-full mb-3">
-                        <ImageIcon className="h-6 w-6 text-blue-600" />
+                      <div className="bg-amber-950/20 p-3 rounded-full mb-3 border border-[#dcae61]/10">
+                        <ImageIcon className="h-6 w-6 text-[#dcae61]" />
                       </div>
-                      <p className="text-sm font-medium text-slate-700">Resim Yükle veya Sürükle</p>
-                      <p className="text-xs text-slate-500 mt-1">PNG, JPG, WEBP</p>
+                      <p className="text-sm font-bold text-white">Resim Yükle veya Sürükle</p>
+                      <p className="text-xs text-neutral-500 mt-1 uppercase font-semibold tracking-wider">PNG, JPG, WEBP</p>
                     </>
                   )}
                 </div>
@@ -291,96 +299,103 @@ export function AdminMenu() {
                 />
               </div>
             ) : (
-              <div className="space-y-3 border-2 border-slate-100 bg-slate-50 rounded-xl p-4">
+              <div className="space-y-4 border border-amber-950/15 bg-neutral-950/30 rounded-2xl p-4">
                 {previewImage && (
-                  <div className="relative w-full h-32 rounded-lg overflow-hidden mb-3">
+                  <div className="relative w-full h-32 rounded-xl overflow-hidden mb-3 border border-amber-950/10">
                     <img src={previewImage} alt="Generated" className="w-full h-full object-cover" />
                   </div>
                 )}
-                <div className="space-y-1">
-                  <Label className="text-xs">Ne resmi üretmek istersiniz?</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-neutral-300">Ne resmi üretmek istersiniz?</Label>
                   <Input 
                     value={generatePrompt} 
                     onChange={e => setGeneratePrompt(e.target.value)} 
-                    placeholder="Örn: Lezzetli bir Meksika tacosu, stüdyo çekimi" 
-                    className="h-8 text-sm"
+                    placeholder="Örn: Kremalı latte kahve, stüdyo çekimi" 
+                    className="h-10 text-sm bg-neutral-950/50 border border-amber-950/25 text-white focus:border-[#dcae61] focus:ring-[#dcae61] rounded-xl placeholder-neutral-600"
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Çözünürlük</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-neutral-300">Çözünürlük</Label>
                   <select 
-                    className="flex h-8 w-full rounded-md border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-950"
+                    className="flex h-10 w-full rounded-xl border border-amber-950/25 bg-neutral-950/50 text-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#dcae61]"
                     value={imageSize} 
                     onChange={e => setImageSize(e.target.value)}
                   >
-                    <option value="1K">1K (Standart)</option>
-                    <option value="2K">2K (Yüksek)</option>
-                    <option value="4K">4K (Ultra Yüksek)</option>
+                    <option value="1K" className="bg-stone-900">1K (Standart)</option>
+                    <option value="2K" className="bg-stone-900">2K (Yüksek)</option>
+                    <option value="4K" className="bg-stone-900">4K (Ultra Yüksek)</option>
                   </select>
                 </div>
                 <Button 
                   onClick={handleGenerateImage} 
                   disabled={isGenerating || isAnalyzing} 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-sm"
+                  className="button-3d-primary w-full h-10 text-xs font-bold uppercase tracking-widest rounded-xl mt-2"
                 >
-                  {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  {isGenerating ? 'Üretiliyor...' : 'Resim Üret'}
+                  {isGenerating ? <Loader2 className="animate-spin mr-1.5 h-4 w-4" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
+                  {isGenerating ? 'Üretiliyor...' : 'Görsel Üret'}
                 </Button>
               </div>
             )}
 
-            <div className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label htmlFor="name">Ürün Adı</Label>
+            <div className="space-y-4 pt-2 border-t border-amber-950/10">
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Ürün Adı</Label>
                 <Input 
                   id="name" 
                   value={newItem.name} 
                   onChange={(e) => setNewItem({...newItem, name: e.target.value})} 
-                  placeholder="Örn: Acılı Taco"
+                  placeholder="Örn: Caramel Macchiato"
+                  className="bg-neutral-950/50 border border-amber-950/25 text-white focus:border-[#dcae61] focus:ring-[#dcae61] rounded-xl"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="category">Kategori</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="category" className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Kategori</Label>
                 <Input 
                   id="category" 
                   value={newItem.category} 
                   onChange={(e) => setNewItem({...newItem, category: e.target.value})} 
-                  placeholder="Örn: Ana Yemek"
+                  placeholder="Örn: Sıcak Kahveler"
+                  className="bg-neutral-950/50 border border-amber-950/25 text-white focus:border-[#dcae61] focus:ring-[#dcae61] rounded-xl"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="price">Fiyat (₺)</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="price" className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Fiyat (₺)</Label>
                 <Input 
                   id="price" 
                   type="number"
                   value={newItem.price} 
                   onChange={(e) => setNewItem({...newItem, price: e.target.value})} 
                   placeholder="0.00"
+                  className="bg-neutral-950/50 border border-amber-950/25 text-white focus:border-[#dcae61] focus:ring-[#dcae61] rounded-xl"
                 />
               </div>
-              <div className="space-y-1">
-                <Label htmlFor="description">Açıklama</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Açıklama</Label>
                 <Input 
                   id="description" 
                   value={newItem.description} 
                   onChange={(e) => setNewItem({...newItem, description: e.target.value})} 
-                  placeholder="Ürün açıklaması..."
+                  placeholder="Kavrulmuş çekirdekler, süt köpüğü..."
+                  className="bg-neutral-950/50 border border-amber-950/25 text-white focus:border-[#dcae61] focus:ring-[#dcae61] rounded-xl"
                 />
               </div>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleSave} disabled={isAnalyzing || isGenerating}>
-              <Plus className="mr-2 h-4 w-4" />
+          <CardFooter className="p-5 pt-0 bg-neutral-900/10">
+            <Button className="button-3d-primary w-full h-11 text-xs font-bold uppercase tracking-widest rounded-xl" onClick={handleSave} disabled={isAnalyzing || isGenerating}>
+              <Plus className="mr-1.5 h-4 w-4" />
               Menüye Ekle
             </Button>
           </CardFooter>
         </Card>
       </div>
 
-      <div className="md:col-span-2">
-        <h3 className="text-lg font-semibold mb-4">Mevcut Menü ({menuItems.length} Ürün)</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <div className="md:col-span-2 space-y-6">
+        <h3 className="text-lg font-black text-white font-sans uppercase tracking-wider flex items-center">
+          <Sparkles className="h-5 w-5 mr-2 text-[#dcae61]" />
+          Mevcut Menü ({menuItems.length} Ürün)
+        </h3>
+        <div className="grid gap-6 sm:grid-cols-2">
           {menuItems.map((item, index) => (
             <motion.div
               key={item.id}
@@ -388,28 +403,28 @@ export function AdminMenu() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2, delay: index * 0.05 }}
             >
-              <Card className="overflow-hidden flex flex-row h-32">
-                <div className="w-32 bg-slate-100 shrink-0">
+              <Card className="overflow-hidden flex flex-row h-36 card-3d border-none hover:border-[#dcae61]/25 transition-all duration-300 shadow-lg">
+                <div className="w-32 bg-neutral-950/40 shrink-0 border-r border-amber-950/10">
                   <img src={item.image} alt={item.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div className="p-4 flex flex-col justify-center flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-1">
-                    <h4 className="font-semibold text-slate-900 truncate pr-2">{item.name}</h4>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-blue-600">₺{item.price}</span>
+                    <h4 className="font-bold text-[#f5f2eb] truncate text-base pr-2">{item.name}</h4>
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="font-extrabold text-[#dcae61] text-base">₺{item.price}</span>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" 
+                        className="h-7 w-7 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full" 
                         onClick={() => removeMenuItem(item.id)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-2">{item.description}</p>
-                  <div className="mt-auto">
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-800">
+                  <p className="text-xs text-neutral-400 line-clamp-2 mt-1 leading-relaxed">{item.description}</p>
+                  <div className="mt-3.5">
+                    <span className="badge-glass inline-flex items-center rounded-full border border-amber-950/20 px-2.5 py-0.5 text-[10px] font-bold text-[#dcae61] uppercase tracking-wider">
                       {item.category}
                     </span>
                   </div>

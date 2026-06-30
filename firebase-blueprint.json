@@ -8,7 +8,7 @@
         "table": { "type": "string" },
         "items": { "type": "array", "items": { "type": "object" } },
         "total": { "type": "number" },
-        "status": { "type": "string", "enum": ["Yeni", "Hazırlanıyor", "Hazır", "Teslim Edildi"] },
+        "status": { "type": "string", "enum": ["Yeni", "Hazırlanıyor", "Hazır", "Teslim Edildi", "Ödeme Bekleniyor", "Ödendi"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["table", "items", "total", "status", "createdAt"]
@@ -23,6 +23,59 @@
         "resolved": { "type": "boolean" }
       },
       "required": ["table", "time", "resolved"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "A restaurant staff/employee member",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "salary": { "type": "number" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" }
+      },
+      "required": ["name", "role", "salary"]
+    },
+    "StockItem": {
+      "title": "StockItem",
+      "description": "An inventory stock item",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "quantity": { "type": "number" },
+        "minQuantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "unitPrice": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "quantity", "minQuantity", "unit", "unitPrice"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "An operational expense record",
+      "type": "object",
+      "properties": {
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "amount", "date"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "A discount coupon code",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "discountValue": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "minOrderAmount": { "type": "number" },
+        "expiryDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "discountType", "discountValue", "isActive"]
     }
   },
   "firestore": {
@@ -33,6 +86,22 @@
     "waiter_calls": {
       "schema": "WaiterCall",
       "description": "Collection of waiter call requests"
+    },
+    "staff": {
+      "schema": "Staff",
+      "description": "Collection of staff/employee records"
+    },
+    "stock": {
+      "schema": "StockItem",
+      "description": "Collection of inventory stock items"
+    },
+    "expenses": {
+      "schema": "Expense",
+      "description": "Collection of operational expenses"
+    },
+    "coupons": {
+      "schema": "Coupon",
+      "description": "Collection of discount coupons"
     }
   }
 }

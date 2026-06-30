@@ -33,11 +33,14 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-blue-100 bg-white/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-50 w-full border-b border-amber-950/15 bg-[#0e0d0b]/80 backdrop-blur-md text-[#f5f2eb]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <div className="flex items-center">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl font-bold text-blue-600 tracking-tight">İzmir Deniz</span>
+            <span className="text-lg sm:text-xl font-black text-white tracking-widest flex items-center gap-2">
+              <span className="text-[#dcae61] text-2xl font-black drop-shadow-[0_0_10px_rgba(220,174,97,0.4)]">▲</span> 
+              FLUX ZONE
+            </span>
           </Link>
         </div>
 
@@ -48,8 +51,8 @@ export function Navbar() {
               key={link.path}
               to={link.path}
               className={cn(
-                'text-sm font-medium transition-colors hover:text-blue-600',
-                location.pathname === link.path ? 'text-blue-600' : 'text-slate-600'
+                'text-sm font-semibold tracking-wide transition-colors hover:text-[#dcae61]',
+                location.pathname === link.path ? 'text-[#dcae61]' : 'text-neutral-400'
               )}
             >
               {link.name}
@@ -60,8 +63,10 @@ export function Navbar() {
             <Button 
               variant={waiterCalled ? "default" : "outline"} 
               className={cn(
-                "h-10 rounded-full px-4 transition-all",
-                waiterCalled ? "bg-green-600 hover:bg-green-700 text-white border-none" : "border-blue-200 text-blue-600 hover:bg-blue-50"
+                "h-10 rounded-full px-4 transition-all font-semibold",
+                waiterCalled 
+                  ? "bg-green-600 hover:bg-green-700 text-white border-none" 
+                  : "border-amber-900/30 text-[#dcae61] hover:bg-amber-950/20 hover:text-white bg-transparent"
               )}
               onClick={handleCallWaiter}
               disabled={waiterCalled}
@@ -71,10 +76,10 @@ export function Navbar() {
             </Button>
 
             <Link to="/order">
-              <Button variant="outline" className="relative h-10 w-10 rounded-full p-0 border-blue-200 text-blue-600 hover:bg-blue-50">
+              <Button variant="outline" className="relative h-10 w-10 rounded-full p-0 border-amber-900/30 text-[#dcae61] hover:bg-amber-950/20 hover:text-white bg-transparent">
                 <ShoppingBag className="h-5 w-5" />
                 {cartItemsCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#dcae61] to-[#ca8a04] text-[10px] font-black text-slate-950 shadow-sm">
                     {cartItemsCount}
                   </span>
                 )}
@@ -90,7 +95,9 @@ export function Navbar() {
             size="icon"
             className={cn(
               "relative h-10 w-10 rounded-full p-0 transition-all",
-              waiterCalled ? "bg-green-600 hover:bg-green-700 text-white border-none" : "border-blue-200 text-blue-600 hover:bg-blue-50"
+              waiterCalled 
+                ? "bg-green-600 hover:bg-green-700 text-white border-none" 
+                : "border-amber-900/30 text-[#dcae61] hover:bg-amber-950/20 hover:text-white bg-transparent"
             )}
             onClick={handleCallWaiter}
             disabled={waiterCalled}
@@ -99,16 +106,16 @@ export function Navbar() {
           </Button>
 
           <Link to="/order">
-            <Button variant="outline" className="relative h-10 w-10 rounded-full p-0 border-blue-200 text-blue-600 hover:bg-blue-50">
+            <Button variant="outline" className="relative h-10 w-10 rounded-full p-0 border-amber-900/30 text-[#dcae61] hover:bg-amber-950/20 hover:text-white bg-transparent">
               <ShoppingBag className="h-5 w-5" />
               {cartItemsCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white">
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-tr from-[#dcae61] to-[#ca8a04] text-[10px] font-black text-slate-950">
                   {cartItemsCount}
                 </span>
               )}
             </Button>
           </Link>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="text-slate-600">
+          <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="text-neutral-400 hover:text-white">
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
@@ -116,7 +123,7 @@ export function Navbar() {
 
       {/* Mobile Nav Menu */}
       {isOpen && (
-        <div className="md:hidden border-t border-blue-100 bg-white px-4 py-4 shadow-lg">
+        <div className="md:hidden border-t border-amber-950/15 bg-[#0e0d0b] px-4 py-4 shadow-lg">
           <div className="flex flex-col space-y-4">
             {links.map((link) => (
               <Link
@@ -124,8 +131,8 @@ export function Navbar() {
                 to={link.path}
                 onClick={() => setIsOpen(false)}
                 className={cn(
-                  'text-base font-medium transition-colors hover:text-blue-600',
-                  location.pathname === link.path ? 'text-blue-600' : 'text-slate-600'
+                  'text-base font-medium transition-colors',
+                  location.pathname === link.path ? 'text-[#dcae61]' : 'text-neutral-400 hover:text-white'
                 )}
               >
                 {link.name}

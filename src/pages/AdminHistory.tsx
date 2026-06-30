@@ -45,18 +45,18 @@ export function AdminHistory() {
   };
 
   return (
-    <div className="space-y-6 relative">
+    <div className="space-y-6 relative text-[#f5f2eb]">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Geçmiş Siparişler</h2>
-          <p className="text-slate-500">Kapatılan masaların ve ödenen siparişlerin arşivi.</p>
+          <h2 className="text-2xl font-black tracking-tight text-white font-sans">Geçmiş Siparişler</h2>
+          <p className="text-neutral-400 font-medium text-xs sm:text-sm">Kapatılan masaların ve ödenen siparişlerin arşivi.</p>
         </div>
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3 top-3.5 h-4 w-4 text-neutral-500" />
           <Input
             type="search"
             placeholder="Masa ara..."
-            className="pl-9"
+            className="pl-10 h-11 bg-neutral-950/50 border-amber-950/20 text-white rounded-xl focus:border-[#dcae61] focus:ring-1 focus:ring-[#dcae61]"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -64,21 +64,21 @@ export function AdminHistory() {
       </div>
 
       {pastOrders.length === 0 ? (
-        <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 text-center py-16">
+        <Card className="card-3d border-dashed border-2 border-amber-950/15 bg-neutral-900/40 text-center py-20">
           <CardContent className="flex flex-col items-center justify-center">
-            <div className="rounded-full bg-slate-100 p-4 text-slate-400 mb-4">
+            <div className="rounded-2xl bg-[#dcae61]/10 p-4 text-[#dcae61] mb-5 border border-amber-900/10 shadow-md">
               <History className="h-8 w-8" />
             </div>
-            <CardTitle className="mb-2">Geçmiş Sipariş Yok</CardTitle>
-            <CardDescription>Henüz hesabı kapatılmış bir sipariş bulunmuyor.</CardDescription>
+            <CardTitle className="mb-2 text-xl font-bold text-white">Geçmiş Sipariş Yok</CardTitle>
+            <CardDescription className="text-neutral-400 font-medium text-xs sm:text-sm">Henüz hesabı kapatılmış bir sipariş bulunmuyor.</CardDescription>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-8">
           {sortedTables.map(tableName => (
             <div key={tableName} className="space-y-4">
-              <h3 className="text-xl font-semibold text-slate-900 border-b pb-2">{tableName}</h3>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <h3 className="text-xl font-black text-[#dcae61] border-b border-amber-950/15 pb-2">{tableName}</h3>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 <AnimatePresence>
                   {groupedOrders[tableName]
                     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -92,51 +92,52 @@ export function AdminHistory() {
                       transition={{ duration: 0.2 }}
                       className="h-full"
                     >
-                      <Card className="border-slate-200 flex flex-col bg-slate-50/50 h-full">
-                        <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-white">
+                      <Card className="card-3d flex flex-col h-full border-none hover:border-[#dcae61]/35 hover:translate-y-[-2px] transition-all duration-300 overflow-hidden">
+                        <CardHeader className="p-5 pb-3 border-b border-amber-950/10 bg-neutral-900/30">
                           <div className="flex justify-between items-start">
                             <div>
-                              <div className="text-sm font-medium text-slate-900">
+                              <div className="text-sm font-bold text-white">
                                 {new Date(order.createdAt).toLocaleDateString('tr-TR')}
                               </div>
-                              <div className="text-xs text-slate-500">
+                              <div className="text-xs text-neutral-400 mt-1 font-medium flex items-center gap-1.5">
+                                <Search className="h-3 w-3 text-[#dcae61]" />
                                 {new Date(order.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </div>
                             </div>
-                            <Badge variant="outline" className="bg-slate-100 text-slate-600">
+                            <Badge className="bg-[#dcae61]/15 text-[#dcae61] border border-[#dcae61]/25 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase">
                               {order.status}
                             </Badge>
                           </div>
                         </CardHeader>
-                        <CardContent className="p-4 flex-1">
+                        <CardContent className="p-5 flex-1">
                           <ul className="space-y-2 mb-4">
                             {order.items.map(item => (
                               <li key={item.id} className="flex justify-between text-sm">
-                                <span className="text-slate-700">{item.quantity}x {item.name}</span>
-                                <span className="text-slate-500">₺{(item.price * item.quantity).toFixed(2)}</span>
+                                <span className="text-neutral-300 font-medium">{item.quantity}x {item.name}</span>
+                                <span className="text-neutral-400 font-semibold">₺{(item.price * item.quantity).toFixed(2)}</span>
                               </li>
                             ))}
                           </ul>
-                          <div className="pt-3 border-t border-slate-200 flex justify-between items-center">
-                            <span className="text-xs font-medium px-2 py-1 rounded-md bg-white border border-slate-200 text-slate-600">
+                          <div className="pt-3 border-t border-amber-950/10 flex justify-between items-center">
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-xl bg-neutral-950/40 border border-amber-950/10 text-[#dcae61] uppercase tracking-wider">
                               {order.paymentMethod}
                             </span>
-                            <span className="font-bold text-slate-900">₺{order.total.toFixed(2)}</span>
+                            <span className="font-extrabold text-[#dcae61] text-base">₺{order.total.toFixed(2)}</span>
                           </div>
                           {order.note && (
-                            <div className="mt-3 text-xs bg-white text-slate-600 p-2 rounded border border-slate-200">
-                              <span className="font-semibold">Not:</span> {order.note}
+                            <div className="mt-3 text-xs bg-neutral-950/40 text-neutral-300 p-2.5 rounded-xl border border-amber-950/10 font-medium">
+                              <span className="font-bold text-[#dcae61]">Not:</span> {order.note}
                             </div>
                           )}
                         </CardContent>
-                        <CardFooter className="p-4 pt-0 flex justify-end mt-auto">
+                        <CardFooter className="p-5 pt-0 flex justify-end mt-auto">
                           <Button 
                             variant="ghost" 
                             size="sm" 
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-full h-8 px-4 font-bold text-xs uppercase tracking-wider"
                             onClick={() => setOrderToDelete(order.id)}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
                             Sil
                           </Button>
                         </CardFooter>
@@ -153,33 +154,31 @@ export function AdminHistory() {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {orderToDelete && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden"
+              className="w-full max-w-sm card-3d border-none shadow-2xl overflow-hidden p-6"
             >
-              <div className="p-6 text-center">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="w-8 h-8 text-red-600" />
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-bounce">
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Siparişi Sil</h3>
-                <p className="text-slate-500 mb-6">
+                <h3 className="text-xl font-bold text-white mb-2">Siparişi Sil</h3>
+                <p className="text-neutral-400 mb-6 text-xs sm:text-sm font-medium leading-relaxed">
                   Bu geçmiş siparişi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
                 </p>
                 <div className="flex gap-3 justify-center">
                   <Button 
-                    variant="outline" 
                     onClick={() => setOrderToDelete(null)}
-                    className="flex-1"
+                    className="flex-1 button-3d-secondary rounded-full h-11 text-xs font-bold uppercase tracking-wider"
                   >
                     İptal
                   </Button>
                   <Button 
-                    variant="destructive" 
                     onClick={handleDeleteConfirm}
-                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    className="flex-1 button-3d-danger rounded-full h-11 text-xs font-bold uppercase tracking-wider"
                   >
                     Evet, Sil
                   </Button>

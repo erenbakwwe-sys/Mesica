@@ -41,40 +41,40 @@ export function AdminDashboard() {
       value: `₺${todayRevenue.toFixed(2)}`,
       description: `${todayOrdersCount} sipariş tamamlandı`,
       icon: Banknote,
-      color: "text-green-600",
-      bg: "bg-green-100"
+      color: "text-emerald-400",
+      bg: "bg-emerald-500/10 border border-emerald-500/20"
     },
     {
       title: "Haftalık Ciro",
       value: `₺${weekRevenue.toFixed(2)}`,
       description: `Bu hafta ${weekOrdersCount} sipariş`,
       icon: TrendingUp,
-      color: "text-blue-600",
-      bg: "bg-blue-100"
+      color: "text-[#dcae61]",
+      bg: "bg-[#dcae61]/10 border border-[#dcae61]/20"
     },
     {
       title: "Aylık Ciro",
       value: `₺${monthRevenue.toFixed(2)}`,
       description: `Bu ay ${monthOrdersCount} sipariş`,
       icon: Activity,
-      color: "text-purple-600",
-      bg: "bg-purple-100"
+      color: "text-amber-500",
+      bg: "bg-amber-500/10 border border-amber-500/20"
     },
     {
       title: "Aktif Siparişler",
       value: activeOrdersCount.toString(),
       description: "Şu an hazırlanan/bekleyen",
       icon: ShoppingCart,
-      color: "text-blue-600",
-      bg: "bg-blue-100"
+      color: "text-amber-400",
+      bg: "bg-amber-500/10 border border-amber-500/15"
     }
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">Finansal Durum & Özet</h2>
-        <p className="text-slate-500">Restoranınızın anlık ve geçmiş performansını takip edin.</p>
+        <h2 className="text-2xl font-black tracking-tight text-white font-sans">Finansal Durum & Özet</h2>
+        <p className="text-neutral-400 font-medium text-xs sm:text-sm">Flux Zone Coffee anlık ve geçmiş performansı.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -85,18 +85,18 @@ export function AdminDashboard() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
           >
-            <Card className="border-none shadow-md overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium text-slate-600">
+            <Card className="card-3d border-none shadow-xl overflow-hidden hover:border-[#dcae61]/35 hover:translate-y-[-2px] transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-3 space-y-0 p-6">
+                <CardTitle className="text-xs font-black uppercase tracking-wider text-neutral-400">
                   {stat.title}
                 </CardTitle>
-                <div className={`p-2 rounded-full ${stat.bg}`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                <div className={`p-2 rounded-xl ${stat.bg}`}>
+                  <stat.icon className={`h-4.5 w-4.5 ${stat.color}`} />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
-                <p className="text-xs text-slate-500 mt-1">
+              <CardContent className="px-6 pb-6">
+                <div className="text-2xl font-black text-white">{stat.value}</div>
+                <p className="text-xs text-neutral-500 font-semibold mt-1.5">
                   {stat.description}
                 </p>
               </CardContent>

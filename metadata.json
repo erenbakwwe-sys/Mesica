@@ -1,5 +1,6 @@
 {
-  "name": "İzmir Deniz Restaurant",
-  "description": "Balık, kalamar, karides, ahtapot, sardalya ve çorba servis edilen mütevazı deniz ürünleri restoranı.",
-  "requestFramePermissions": ["camera", "notifications"]
+  "name": "Flux Zone Coffee",
+  "description": "Atakum Samsun'da kahveyle enerjiyi, müzikle ruhu birleştiren yeni nesil üçüncü dalga nitelikli kahve barı.",
+  "requestFramePermissions": ["camera", "notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

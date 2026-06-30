@@ -72,6 +72,42 @@ export interface Table {
   openedAt?: Date | null;
 }
 
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  salary: number;
+  phone: string;
+  email: string;
+}
+
+export interface StockItem {
+  id: string;
+  name: string;
+  quantity: number;
+  minQuantity: number;
+  unit: string;
+  unitPrice: number;
+  lastUpdated: Date;
+}
+
+export interface Expense {
+  id: string;
+  category: string;
+  description: string;
+  amount: number;
+  date: Date;
+}
+
+export interface Coupon {
+  id: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  isActive: boolean;
+  minOrderAmount?: number;
+  expiryDate?: Date | null;
+}
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
@@ -131,6 +167,20 @@ export interface CartContextType {
   tables: Table[];
   openTable: (id: string) => void;
   closeTable: (id: string) => void;
+  staff: Staff[];
+  addStaff: (staffMember: Omit<Staff, 'id'>) => Promise<void>;
+  removeStaff: (id: string) => Promise<void>;
+  stock: StockItem[];
+  addStockItem: (item: Omit<StockItem, 'id' | 'lastUpdated'>) => Promise<void>;
+  updateStockItem: (id: string, item: Partial<StockItem>) => Promise<void>;
+  removeStockItem: (id: string) => Promise<void>;
+  expenses: Expense[];
+  addExpense: (expense: Omit<Expense, 'id' | 'date'>) => Promise<void>;
+  removeExpense: (id: string) => Promise<void>;
+  coupons: Coupon[];
+  addCoupon: (coupon: Coupon) => Promise<void>;
+  toggleCouponStatus: (id: string, isActive: boolean) => Promise<void>;
+  removeCoupon: (id: string) => Promise<void>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -164,6 +214,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [stock, setStock] = useState<StockItem[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
 
   // Test Connection
   useEffect(() => {
@@ -313,6 +367,78 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'waiter_calls');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Staff
+  useEffect(() => {
+    const q = query(collection(db, 'staff'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      } as Staff));
+      setStaff(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'staff');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Stock
+  useEffect(() => {
+    const q = query(collection(db, 'stock'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          lastUpdated: data.lastUpdated?.toDate() || new Date()
+        } as StockItem;
+      });
+      setStock(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'stock');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Expenses
+  useEffect(() => {
+    const q = query(collection(db, 'expenses'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          date: data.date?.toDate() || new Date()
+        } as Expense;
+      });
+      setExpenses(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'expenses');
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Sync Coupons
+  useEffect(() => {
+    const q = query(collection(db, 'coupons'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          id: doc.id,
+          expiryDate: data.expiryDate?.toDate() || null
+        } as Coupon;
+      });
+      setCoupons(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'coupons');
     });
     return () => unsubscribe();
   }, []);
@@ -622,6 +748,109 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const addStaff = async (staffMember: Omit<Staff, 'id'>) => {
+    try {
+      await addDoc(collection(db, 'staff'), staffMember);
+      toast.success(`${staffMember.name} personeli başarıyla eklendi!`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'staff');
+    }
+  };
+
+  const removeStaff = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'staff', id));
+      toast.success('Personel başarıyla silindi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `staff/${id}`);
+    }
+  };
+
+  const addStockItem = async (item: Omit<StockItem, 'id' | 'lastUpdated'>) => {
+    try {
+      await addDoc(collection(db, 'stock'), {
+        ...item,
+        lastUpdated: serverTimestamp()
+      });
+      toast.success(`${item.name} stok kalemi başarıyla eklendi!`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'stock');
+    }
+  };
+
+  const updateStockItem = async (id: string, item: Partial<StockItem>) => {
+    try {
+      await updateDoc(doc(db, 'stock', id), {
+        ...item,
+        lastUpdated: serverTimestamp()
+      });
+      toast.success('Stok kalemi başarıyla güncellendi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `stock/${id}`);
+    }
+  };
+
+  const removeStockItem = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'stock', id));
+      toast.success('Stok kalemi başarıyla silindi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `stock/${id}`);
+    }
+  };
+
+  const addExpense = async (expense: Omit<Expense, 'id' | 'date'>) => {
+    try {
+      await addDoc(collection(db, 'expenses'), {
+        ...expense,
+        date: serverTimestamp()
+      });
+      toast.success('Gider kalemi başarıyla eklendi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'expenses');
+    }
+  };
+
+  const removeExpense = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'expenses', id));
+      toast.success('Gider kalemi başarıyla silindi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `expenses/${id}`);
+    }
+  };
+
+  const addCoupon = async (coupon: Coupon) => {
+    try {
+      await setDoc(doc(db, 'coupons', coupon.id.toUpperCase()), {
+        ...coupon,
+        id: coupon.id.toUpperCase(),
+        expiryDate: coupon.expiryDate ? coupon.expiryDate : null
+      });
+      toast.success(`${coupon.id.toUpperCase()} kuponu başarıyla eklendi!`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `coupons/${coupon.id}`);
+    }
+  };
+
+  const toggleCouponStatus = async (id: string, isActive: boolean) => {
+    try {
+      await updateDoc(doc(db, 'coupons', id), { isActive });
+      toast.success(`Kupon ${isActive ? 'aktif' : 'pasif'} hale getirildi.`);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, `coupons/${id}`);
+    }
+  };
+
+  const removeCoupon = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'coupons', id));
+      toast.success('Kupon başarıyla silindi.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `coupons/${id}`);
+    }
+  };
+
   return (
     <CartContext.Provider
       value={{
@@ -645,7 +874,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
         resolveWaiterCall,
         tables,
         openTable,
-        closeTable
+        closeTable,
+        staff,
+        addStaff,
+        removeStaff,
+        stock,
+        addStockItem,
+        updateStockItem,
+        removeStockItem,
+        expenses,
+        addExpense,
+        removeExpense,
+        coupons,
+        addCoupon,
+        toggleCouponStatus,
+        removeCoupon
       }}
     >
       {children}

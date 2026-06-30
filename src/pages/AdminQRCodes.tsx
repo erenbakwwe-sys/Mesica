@@ -39,39 +39,42 @@ export function AdminQRCodes() {
   const baseUrl = 'https://izmirdenizrestaurant.vercel.app';
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-[#f5f2eb]">
       <div className="print:hidden">
-        <h2 className="text-2xl font-bold tracking-tight text-slate-900">QR Kod Oluşturucu</h2>
-        <p className="text-slate-500">Masalarınız için kalıcı QR kodlar oluşturun ve yazdırın.</p>
+        <h2 className="text-2xl font-black tracking-tight text-white font-sans">QR Kod Oluşturucu</h2>
+        <p className="text-neutral-400 font-medium text-xs sm:text-sm">Masalarınız için kalıcı QR kodlar oluşturun ve yazdırın.</p>
       </div>
 
-      <Card className="border-none shadow-md print:hidden">
-        <CardHeader>
-          <CardTitle>Masa Sayısı</CardTitle>
-          <CardDescription>Kaç adet masa için QR kod üretmek istiyorsunuz?</CardDescription>
+      <Card className="card-3d border-none shadow-xl print:hidden">
+        <CardHeader className="p-6">
+          <CardTitle className="text-lg font-bold text-white">Masa Sayısı</CardTitle>
+          <CardDescription className="text-neutral-400 font-medium text-xs">Kaç adet masa için QR kod üretmek istiyorsunuz?</CardDescription>
         </CardHeader>
-        <CardContent className="flex items-end gap-4">
+        <CardContent className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4 p-6 pt-0">
           <div className="space-y-2 flex-1 max-w-xs">
-            <Label htmlFor="tableCount">Masa Adedi</Label>
+            <Label htmlFor="tableCount" className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Masa Adedi</Label>
             <Input 
               id="tableCount" 
               type="number" 
               min="1" 
               max="100" 
+              className="h-11 bg-neutral-950/50 border-amber-950/20 text-white rounded-xl focus:border-[#dcae61] focus:ring-1 focus:ring-[#dcae61]"
               value={tableCount} 
               onChange={(e) => setTableCount(parseInt(e.target.value) || 0)} 
             />
           </div>
-          <Button onClick={handleGenerate} className="bg-blue-600 hover:bg-blue-700">
-            <QrCode className="mr-2 h-4 w-4" />
-            Üret / Güncelle
-          </Button>
-          {generated && (
-            <Button variant="outline" onClick={handlePrint}>
-              <Printer className="mr-2 h-4 w-4" />
-              Yazdır
+          <div className="flex gap-3">
+            <Button onClick={handleGenerate} className="button-3d-primary rounded-full h-11 text-xs uppercase font-bold tracking-widest px-6 flex-1 sm:flex-none">
+              <QrCode className="mr-1.5 h-4 w-4" />
+              Üret / Güncelle
             </Button>
-          )}
+            {generated && (
+              <Button onClick={handlePrint} className="button-3d-secondary rounded-full h-11 text-xs uppercase font-bold tracking-wider px-6">
+                <Printer className="mr-1.5 h-4 w-4" />
+                Yazdır
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -87,19 +90,24 @@ export function AdminQRCodes() {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3, delay: (i % 10) * 0.05 }}
-                className="flex flex-col items-center justify-center p-4 bg-white border border-slate-200 rounded-xl shadow-sm print:border-2 print:border-black print:shadow-none"
+                className="flex flex-col items-center justify-center p-5 card-3d border-none hover:border-[#dcae61]/30 transition-all duration-300 shadow-xl print:bg-white print:text-black print:border-2 print:border-black print:shadow-none"
               >
-                <h3 className="text-lg font-bold text-slate-900 mb-4">{tableName}</h3>
-                <QRCodeSVG 
-                  value={qrUrl} 
-                  size={120}
-                  level="M"
-                  includeMargin={false}
-                />
-                <p className="text-xs text-slate-500 mt-4 text-center break-all print:hidden">
+                <h3 className="text-base font-black text-[#dcae61] mb-4 print:text-black print:font-bold">{tableName}</h3>
+                
+                {/* White frame around QR for scannability on dark mode screen */}
+                <div className="p-3 bg-white rounded-xl shadow-inner flex items-center justify-center border border-amber-950/5 print:p-0 print:border-none print:shadow-none">
+                  <QRCodeSVG 
+                    value={qrUrl} 
+                    size={120}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                
+                <p className="text-[10px] text-neutral-400 font-semibold mt-4 text-center break-all print:hidden max-w-full truncate hover:text-[#dcae61] transition-colors cursor-pointer" title={qrUrl}>
                   {qrUrl}
                 </p>
-                <p className="text-xs font-medium text-slate-900 mt-2 hidden print:block">
+                <p className="text-xs font-bold text-neutral-900 mt-2 hidden print:block">
                   Sipariş için okutun
                 </p>
               </motion.div>
