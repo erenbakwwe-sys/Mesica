@@ -130,6 +130,8 @@ interface FirestoreErrorInfo {
   }
 }
 
+let globalOnFirestoreError: ((error: unknown, operationType: OperationType, path: string | null) => void) | null = null;
+
 function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -143,12 +145,17 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     path
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
+  if (globalOnFirestoreError) {
+    globalOnFirestoreError(error, operationType, path);
+  }
   if (operationType !== OperationType.LIST) {
     throw new Error(JSON.stringify(errInfo));
   }
 }
 
 export interface CartContextType {
+  useLocalFallback: boolean;
+  setUseLocalFallback: (val: boolean) => void;
   menuItems: MenuItem[];
   addMenuItem: (item: MenuItem) => void;
   removeMenuItem: (itemId: string) => void;
@@ -212,6 +219,7 @@ const sendPushNotification = async (title: string, body: string) => {
 };
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const [useLocalFallback, setUseLocalFallback] = useState<boolean>(() => localStorage.getItem('firebase_quota_fallback') === 'true');
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
@@ -221,6 +229,172 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [stock, setStock] = useState<StockItem[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+
+  // Register global onFirestoreError callback to handle quota limit exceeded
+  useEffect(() => {
+    globalOnFirestoreError = (err, opType, path) => {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (
+        errMsg.toLowerCase().includes('quota') || 
+        errMsg.toLowerCase().includes('limit exceeded') || 
+        errMsg.toLowerCase().includes('billing') || 
+        errMsg.toLowerCase().includes('permission')
+      ) {
+        if (localStorage.getItem('firebase_quota_fallback') !== 'true') {
+          localStorage.setItem('firebase_quota_fallback', 'true');
+          setUseLocalFallback(true);
+          toast.error("Firestore kotası aşıldı! Uygulama kesintisiz çalışabilmek için otomatik olarak yerel depolama (Offline/LocalStorage) moduna geçirildi.", { duration: 10000 });
+        }
+      }
+    };
+    return () => {
+      globalOnFirestoreError = null;
+    };
+  }, []);
+
+  const saveFallbackMenu = (newMenu: MenuItem[]) => {
+    setMenuItems(newMenu);
+    localStorage.setItem('fallback_menu', JSON.stringify(newMenu));
+  };
+
+  const saveFallbackTables = (newTables: Table[]) => {
+    setTables(newTables);
+    localStorage.setItem('fallback_tables', JSON.stringify(newTables));
+  };
+
+  const saveFallbackOrders = (newOrders: Order[]) => {
+    setOrders(newOrders);
+    localStorage.setItem('fallback_orders', JSON.stringify(newOrders));
+  };
+
+  const saveFallbackWaiterCalls = (newCalls: WaiterCall[]) => {
+    setWaiterCalls(newCalls);
+    localStorage.setItem('fallback_waiter_calls', JSON.stringify(newCalls));
+  };
+
+  const saveFallbackStaff = (newStaff: Staff[]) => {
+    setStaff(newStaff);
+    localStorage.setItem('fallback_staff', JSON.stringify(newStaff));
+  };
+
+  const saveFallbackStock = (newStock: StockItem[]) => {
+    setStock(newStock);
+    localStorage.setItem('fallback_stock', JSON.stringify(newStock));
+  };
+
+  const saveFallbackExpenses = (newExpenses: Expense[]) => {
+    setExpenses(newExpenses);
+    localStorage.setItem('fallback_expenses', JSON.stringify(newExpenses));
+  };
+
+  const saveFallbackCoupons = (newCoupons: Coupon[]) => {
+    setCoupons(newCoupons);
+    localStorage.setItem('fallback_coupons', JSON.stringify(newCoupons));
+  };
+
+  // Load fallback data if active
+  useEffect(() => {
+    if (useLocalFallback) {
+      // 1. Menu Items
+      const localMenu = localStorage.getItem('fallback_menu');
+      if (localMenu) {
+        setMenuItems(JSON.parse(localMenu));
+      } else {
+        localStorage.setItem('fallback_menu', JSON.stringify(INITIAL_MENU_ITEMS));
+        setMenuItems(INITIAL_MENU_ITEMS);
+      }
+
+      // 2. Tables
+      const localTables = localStorage.getItem('fallback_tables');
+      if (localTables) {
+        setTables(JSON.parse(localTables));
+      } else {
+        const initialTables = Array.from({ length: 20 }, (_, i) => ({
+          id: (i + 1).toString(),
+          name: `Masa ${i + 1}`,
+          isOpen: false,
+          openedAt: null
+        }));
+        localStorage.setItem('fallback_tables', JSON.stringify(initialTables));
+        setTables(initialTables);
+      }
+
+      // 3. Orders
+      const localOrders = localStorage.getItem('fallback_orders');
+      if (localOrders) {
+        const parsedOrders = JSON.parse(localOrders).map((o: any) => ({
+          ...o,
+          createdAt: new Date(o.createdAt),
+          payments: o.payments ? o.payments.map((p: any) => ({ ...p, date: new Date(p.date) })) : []
+        }));
+        setOrders(parsedOrders);
+      } else {
+        localStorage.setItem('fallback_orders', JSON.stringify([]));
+        setOrders([]);
+      }
+
+      // 4. Waiter Calls
+      const localCalls = localStorage.getItem('fallback_waiter_calls');
+      if (localCalls) {
+        const parsedCalls = JSON.parse(localCalls).map((c: any) => ({
+          ...c,
+          time: new Date(c.time)
+        }));
+        setWaiterCalls(parsedCalls);
+      } else {
+        localStorage.setItem('fallback_waiter_calls', JSON.stringify([]));
+        setWaiterCalls([]);
+      }
+
+      // 5. Staff
+      const localStaff = localStorage.getItem('fallback_staff');
+      if (localStaff) {
+        setStaff(JSON.parse(localStaff));
+      } else {
+        localStorage.setItem('fallback_staff', JSON.stringify([]));
+        setStaff([]);
+      }
+
+      // 6. Stock
+      const localStock = localStorage.getItem('fallback_stock');
+      if (localStock) {
+        const parsedStock = JSON.parse(localStock).map((s: any) => ({
+          ...s,
+          lastUpdated: new Date(s.lastUpdated)
+        }));
+        setStock(parsedStock);
+      } else {
+        localStorage.setItem('fallback_stock', JSON.stringify([]));
+        setStock([]);
+      }
+
+      // 7. Expenses
+      const localExpenses = localStorage.getItem('fallback_expenses');
+      if (localExpenses) {
+        const parsedExpenses = JSON.parse(localExpenses).map((e: any) => ({
+          ...e,
+          date: new Date(e.date)
+        }));
+        setExpenses(parsedExpenses);
+      } else {
+        localStorage.setItem('fallback_expenses', JSON.stringify([]));
+        setExpenses([]);
+      }
+
+      // 8. Coupons
+      const localCoupons = localStorage.getItem('fallback_coupons');
+      if (localCoupons) {
+        const parsedCoupons = JSON.parse(localCoupons).map((cp: any) => ({
+          ...cp,
+          expiryDate: cp.expiryDate ? new Date(cp.expiryDate) : null
+        }));
+        setCoupons(parsedCoupons);
+      } else {
+        localStorage.setItem('fallback_coupons', JSON.stringify([]));
+        setCoupons([]);
+      }
+    }
+  }, [useLocalFallback]);
 
   // Test Connection
   useEffect(() => {
@@ -238,10 +412,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Sync Menu
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'menu'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty && !localStorage.getItem('izmir_deniz_menu_seeded')) {
-        localStorage.setItem('izmir_deniz_menu_seeded', 'true');
+      if (snapshot.empty) {
         // Populate initial menu if empty
         INITIAL_MENU_ITEMS.forEach(async (item) => {
           try {
@@ -251,7 +425,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
           }
         });
       } else {
-        localStorage.setItem('izmir_deniz_menu_seeded', 'true');
         const items = snapshot.docs.map(doc => doc.data() as MenuItem);
         setMenuItems(items);
       }
@@ -259,10 +432,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'menu');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Tables
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'tables'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const existingTableIds = new Set(snapshot.docs.map(doc => doc.id));
@@ -291,7 +465,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          openedAt: data.openedAt?.toDate() || null
+          openedAt: data.openedAt?.toDate ? data.openedAt.toDate() : (data.openedAt ? new Date(data.openedAt) : null)
         } as Table;
       });
       items.sort((a, b) => parseInt(a.id) - parseInt(b.id));
@@ -300,10 +474,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'tables');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Orders
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const formatted = snapshot.docs.map(doc => {
@@ -311,7 +486,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          createdAt: data.createdAt?.toDate() || new Date()
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date())
         } as Order;
       });
 
@@ -344,10 +519,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'orders');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Waiter Calls
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'waiter_calls'), orderBy('time', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const formatted = snapshot.docs.map(doc => {
@@ -355,7 +531,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          time: data.time?.toDate() || new Date()
+          time: data.time?.toDate ? data.time.toDate() : (data.time ? new Date(data.time) : new Date())
         } as WaiterCall;
       });
 
@@ -372,10 +548,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'waiter_calls');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Staff
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'staff'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({
@@ -387,10 +564,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'staff');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Stock
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'stock'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => {
@@ -398,7 +576,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          lastUpdated: data.lastUpdated?.toDate() || new Date()
+          lastUpdated: data.lastUpdated?.toDate ? data.lastUpdated.toDate() : (data.lastUpdated ? new Date(data.lastUpdated) : new Date())
         } as StockItem;
       });
       setStock(items);
@@ -406,10 +584,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'stock');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Expenses
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'expenses'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => {
@@ -417,7 +596,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          date: data.date?.toDate() || new Date()
+          date: data.date?.toDate ? data.date.toDate() : (data.date ? new Date(data.date) : new Date())
         } as Expense;
       });
       setExpenses(items);
@@ -425,10 +604,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'expenses');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   // Sync Coupons
   useEffect(() => {
+    if (useLocalFallback) return;
     const q = query(collection(db, 'coupons'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => {
@@ -436,7 +616,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return {
           ...data,
           id: doc.id,
-          expiryDate: data.expiryDate?.toDate() || null
+          expiryDate: data.expiryDate?.toDate ? data.expiryDate.toDate() : (data.expiryDate ? new Date(data.expiryDate) : null)
         } as Coupon;
       });
       setCoupons(items);
@@ -444,9 +624,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       handleFirestoreError(error, OperationType.LIST, 'coupons');
     });
     return () => unsubscribe();
-  }, []);
+  }, [useLocalFallback]);
 
   const addMenuItem = async (item: MenuItem) => {
+    if (useLocalFallback) {
+      saveFallbackMenu([...menuItems, item]);
+      toast.success(`${item.name} menüye eklendi!`);
+      return;
+    }
     try {
       await setDoc(doc(db, 'menu', item.id), item);
       toast.success(`${item.name} menüye eklendi!`);
@@ -456,6 +641,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeMenuItem = async (itemId: string) => {
+    if (useLocalFallback) {
+      saveFallbackMenu(menuItems.filter(item => item.id !== itemId));
+      setCart((prev) => prev.filter(item => item.id !== itemId));
+      toast.success('Ürün menüden başarıyla silindi.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'menu', itemId));
       setCart((prev) => prev.filter(item => item.id !== itemId));
@@ -503,21 +694,42 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const isPartialPayment = paidAmount !== undefined && paidAmount < total;
     const initialStatus: OrderStatus = isPartialPayment ? 'Ödeme Bekleniyor' : 'Yeni';
     
+    const localId = 'order_' + Date.now();
     const newOrder = {
+      id: localId,
       table,
       items: [...cart],
       total,
       status: initialStatus,
-      createdAt: serverTimestamp(),
+      createdAt: new Date(),
       paymentMethod,
       note: note || '',
       paidAmount: paidAmount || (isPartialPayment ? 0 : total),
       remainingAmount: isPartialPayment ? total - paidAmount : 0,
       payments: paidAmount ? [{ method: paymentMethod, amount: paidAmount, date: new Date() }] : []
     };
+
+    if (useLocalFallback) {
+      saveFallbackOrders([newOrder, ...orders]);
+      const tableObj = tables.find(t => t.name === table);
+      if (tableObj && !tableObj.isOpen) {
+        saveFallbackTables(tables.map(t => t.id === tableObj.id ? { ...t, isOpen: true, openedAt: new Date() } : t));
+      }
+      clearCart();
+      if (!isPartialPayment) {
+        playSound('new_order');
+        toast.success("Siparişiniz mutfağa gönderildi.");
+      } else {
+        toast.success("Kısmi ödeme alındı, diğer ödemeler bekleniyor.");
+      }
+      return localId;
+    }
     
     try {
-      const docRef = await addDoc(collection(db, 'orders'), newOrder);
+      const docRef = await addDoc(collection(db, 'orders'), {
+        ...newOrder,
+        createdAt: serverTimestamp()
+      });
       
       // If table is not open, open it automatically
       const tableObj = tables.find(t => t.name === table);
@@ -544,20 +756,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const placeWaiterOrder = async (table: string, items: CartItem[], note?: string) => {
     if (items.length === 0) return;
     const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const localId = 'order_' + Date.now();
     const newOrder = {
+      id: localId,
       table,
       items: [...items],
       total: totalAmount,
       status: 'Yeni' as OrderStatus,
-      createdAt: serverTimestamp(),
+      createdAt: new Date(),
       paymentMethod: 'Kart' as PaymentMethod,
       note: note || '',
       paidAmount: 0,
       remainingAmount: totalAmount,
       payments: []
     };
+
+    if (useLocalFallback) {
+      saveFallbackOrders([newOrder, ...orders]);
+      const tableObj = tables.find(t => t.name === table);
+      if (tableObj && !tableObj.isOpen) {
+        saveFallbackTables(tables.map(t => t.id === tableObj.id ? { ...t, isOpen: true, openedAt: new Date() } : t));
+      }
+      playSound('new_order');
+      toast.success(`Sipariş girildi (${table})`);
+      return localId;
+    }
+
     try {
-      const docRef = await addDoc(collection(db, 'orders'), newOrder);
+      const docRef = await addDoc(collection(db, 'orders'), {
+        ...newOrder,
+        createdAt: serverTimestamp()
+      });
       // If table is not open, open it automatically
       const tableObj = tables.find(t => t.name === table);
       if (tableObj && !tableObj.isOpen) {
@@ -584,6 +813,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const newPaymentRecord = { method, amount, date: new Date(), tip: tipAmount };
 
+    if (useLocalFallback) {
+      const updatedOrders = orders.map(o => o.id === orderId ? {
+        ...o,
+        paidAmount: newPaidAmount,
+        remainingAmount: newRemainingAmount,
+        payments: [...(o.payments || []), newPaymentRecord],
+        status: isFullyPaid ? 'Yeni' as OrderStatus : 'Ödeme Bekleniyor' as OrderStatus
+      } : o);
+      
+      saveFallbackOrders(updatedOrders);
+      if (isFullyPaid) {
+        playSound('new_order');
+        toast.success("Ödeme tamamlandı, sipariş mutfağa gönderildi.");
+      } else {
+        toast.success(`₺${amount.toFixed(2)} ödeme alındı. Kalan: ₺${newRemainingAmount.toFixed(2)}`);
+      }
+      return;
+    }
+
     try {
       await updateDoc(doc(db, 'orders', orderId), {
         paidAmount: newPaidAmount,
@@ -604,6 +852,75 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addPaymentToTableOrders = async (tableName: string, amount: number, method: PaymentMethod, tipAmount: number = 0) => {
+    if (useLocalFallback) {
+      const updatedOrders = orders.map(o => ({ ...o }));
+      // Find all active table orders that are not paid
+      const tableOrders = updatedOrders.filter(o => o.table === tableName && o.status !== 'Ödendi');
+      // Sort oldest first
+      tableOrders.sort((a, b) => {
+        const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+        const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+        return aTime - bTime;
+      });
+
+      let remainingPayment = amount;
+      let remainingTip = tipAmount;
+      let isFirst = true;
+
+      for (const order of tableOrders) {
+        if (remainingPayment <= 0 && remainingTip <= 0) break;
+
+        const currentUnpaid = order.remainingAmount !== undefined ? order.remainingAmount : order.total;
+        if (currentUnpaid <= 0 && remainingTip <= 0) continue;
+
+        const recordAmount = Math.min(remainingPayment, Math.max(0, currentUnpaid));
+        const orderTip = isFirst ? remainingTip : 0;
+        if (isFirst) {
+          remainingTip = 0;
+          isFirst = false;
+        }
+
+        const orderPaidRecord = { method, amount: recordAmount, date: new Date(), tip: orderTip };
+        order.payments = [...(order.payments || []), orderPaidRecord];
+
+        if (remainingPayment >= currentUnpaid) {
+          order.paidAmount = order.total;
+          order.remainingAmount = 0;
+          order.status = 'Ödendi' as OrderStatus;
+          remainingPayment -= Math.max(0, currentUnpaid);
+        } else {
+          order.paidAmount = (order.paidAmount || 0) + remainingPayment;
+          order.remainingAmount = Math.max(0, currentUnpaid - remainingPayment);
+          order.status = 'Ödeme Bekleniyor' as OrderStatus;
+          remainingPayment = 0;
+        }
+      }
+
+      const finalOrders = updatedOrders.map(originalOrder => {
+        const updated = tableOrders.find(uo => uo.id === originalOrder.id);
+        return updated ? updated : originalOrder;
+      });
+
+      saveFallbackOrders(finalOrders);
+
+      const updatedTableOrders = finalOrders.filter(o => o.table === tableName && o.status !== 'Ödendi');
+      const isTableFullyPaid = updatedTableOrders.length === 0 || updatedTableOrders.every(o => (o.remainingAmount || 0) <= 0);
+      if (isTableFullyPaid) {
+        if (tipAmount > 0) {
+          toast.success(`Masa hesabı ve ₺${tipAmount.toFixed(2)} bahşiş başarıyla ödendi!`);
+        } else {
+          toast.success("Masanın tüm hesabı başarıyla ödendi!");
+        }
+      } else {
+        if (tipAmount > 0) {
+          toast.success(`₺${amount.toFixed(2)} ödeme ve ₺${tipAmount.toFixed(2)} bahşiş alındı.`);
+        } else {
+          toast.success(`₺${amount.toFixed(2)} ödeme alındı.`);
+        }
+      }
+      return;
+    }
+
     // Find all active table orders that are not paid
     const tableOrders = orders.filter(o => o.table === tableName && o.status !== 'Ödendi');
     // Sort oldest first
@@ -680,6 +997,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+    if (useLocalFallback) {
+      saveFallbackOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
+      if (status === 'Hazırlanıyor') {
+        playSound('preparing');
+        toast.info("Sipariş hazırlanıyor");
+      } else if (status === 'Hazır') {
+        playSound('ready');
+        toast.success("Sipariş hazır!");
+      } else if (status === 'Teslim Edildi') {
+        playSound('delivered');
+        toast("Sipariş teslim edildi");
+      }
+      return;
+    }
     try {
       await updateDoc(doc(db, 'orders', orderId), { status });
       if (status === 'Hazırlanıyor') {
@@ -698,6 +1029,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteOrder = async (orderId: string) => {
+    if (useLocalFallback) {
+      saveFallbackOrders(orders.filter(o => o.id !== orderId));
+      toast.success("Sipariş silindi");
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'orders', orderId));
       toast.success("Sipariş silindi");
@@ -707,13 +1043,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const callWaiter = async (table: string) => {
+    const localId = 'call_' + Date.now();
     const newCall = {
+      id: localId,
       table,
-      time: serverTimestamp(),
+      time: new Date(),
       resolved: false
     };
+
+    if (useLocalFallback) {
+      saveFallbackWaiterCalls([newCall, ...waiterCalls]);
+      playSound('waiter');
+      toast.success("Garsona bildirim gönderildi.");
+      return;
+    }
+
     try {
-      await addDoc(collection(db, 'waiter_calls'), newCall);
+      await addDoc(collection(db, 'waiter_calls'), {
+        ...newCall,
+        time: serverTimestamp()
+      });
       playSound('waiter');
       toast.success("Garsona bildirim gönderildi.");
     } catch (e) {
@@ -722,6 +1071,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const resolveWaiterCall = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackWaiterCalls(waiterCalls.map(c => c.id === id ? { ...c, resolved: true } : c));
+      return;
+    }
     try {
       await updateDoc(doc(db, 'waiter_calls', id), { resolved: true });
     } catch (e) {
@@ -730,6 +1083,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const openTable = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackTables(tables.map(t => t.id === id ? { ...t, isOpen: true, openedAt: new Date() } : t));
+      toast.success(`Masa ${id} açıldı.`);
+      return;
+    }
     try {
       await updateDoc(doc(db, 'tables', id), {
         isOpen: true,
@@ -742,6 +1100,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const closeTable = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackTables(tables.map(t => t.id === id ? { ...t, isOpen: false, openedAt: null } : t));
+      
+      const updatedOrders = orders.map(o => o.table === `Masa ${id}` && o.status !== 'Ödendi' ? { ...o, status: 'Ödendi' as OrderStatus } : o);
+      saveFallbackOrders(updatedOrders);
+
+      const updatedCalls = waiterCalls.map(c => c.table === `Masa ${id}` && !c.resolved ? { ...c, resolved: true } : c);
+      saveFallbackWaiterCalls(updatedCalls);
+
+      toast.success(`Masa ${id} kapatıldı ve hesap kesildi.`);
+      return;
+    }
     try {
       await updateDoc(doc(db, 'tables', id), {
         isOpen: false,
@@ -771,6 +1141,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addStaff = async (staffMember: Omit<Staff, 'id'>) => {
+    if (useLocalFallback) {
+      const localId = 'staff_' + Date.now();
+      saveFallbackStaff([...staff, { ...staffMember, id: localId }]);
+      toast.success(`${staffMember.name} personeli başarıyla eklendi!`);
+      return;
+    }
     try {
       await addDoc(collection(db, 'staff'), staffMember);
       toast.success(`${staffMember.name} personeli başarıyla eklendi!`);
@@ -780,6 +1156,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeStaff = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackStaff(staff.filter(s => s.id !== id));
+      toast.success('Personel başarıyla silindi.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'staff', id));
       toast.success('Personel başarıyla silindi.');
@@ -789,6 +1170,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addStockItem = async (item: Omit<StockItem, 'id' | 'lastUpdated'>) => {
+    if (useLocalFallback) {
+      const localId = 'stock_' + Date.now();
+      saveFallbackStock([...stock, { ...item, id: localId, lastUpdated: new Date() }]);
+      toast.success(`${item.name} stok kalemi başarıyla eklendi!`);
+      return;
+    }
     try {
       await addDoc(collection(db, 'stock'), {
         ...item,
@@ -801,6 +1188,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const updateStockItem = async (id: string, item: Partial<StockItem>) => {
+    if (useLocalFallback) {
+      saveFallbackStock(stock.map(s => s.id === id ? { ...s, ...item, lastUpdated: new Date() } : s));
+      toast.success('Stok kalemi başarıyla güncellendi.');
+      return;
+    }
     try {
       await updateDoc(doc(db, 'stock', id), {
         ...item,
@@ -813,6 +1205,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeStockItem = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackStock(stock.filter(s => s.id !== id));
+      toast.success('Stok kalemi başarıyla silindi.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'stock', id));
       toast.success('Stok kalemi başarıyla silindi.');
@@ -822,6 +1219,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addExpense = async (expense: Omit<Expense, 'id' | 'date'>) => {
+    if (useLocalFallback) {
+      const localId = 'expense_' + Date.now();
+      saveFallbackExpenses([...expenses, { ...expense, id: localId, date: new Date() }]);
+      toast.success('Gider kalemi başarıyla eklendi.');
+      return;
+    }
     try {
       await addDoc(collection(db, 'expenses'), {
         ...expense,
@@ -834,6 +1237,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeExpense = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackExpenses(expenses.filter(e => e.id !== id));
+      toast.success('Gider kalemi başarıyla silindi.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'expenses', id));
       toast.success('Gider kalemi başarıyla silindi.');
@@ -843,19 +1251,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const addCoupon = async (coupon: Coupon) => {
+    const cleanCoupon = {
+      ...coupon,
+      id: coupon.id.toUpperCase(),
+      expiryDate: coupon.expiryDate ? coupon.expiryDate : null
+    };
+    if (useLocalFallback) {
+      saveFallbackCoupons([...coupons.filter(c => c.id !== cleanCoupon.id), cleanCoupon]);
+      toast.success(`${cleanCoupon.id} kuponu başarıyla eklendi!`);
+      return;
+    }
     try {
-      await setDoc(doc(db, 'coupons', coupon.id.toUpperCase()), {
-        ...coupon,
-        id: coupon.id.toUpperCase(),
-        expiryDate: coupon.expiryDate ? coupon.expiryDate : null
-      });
-      toast.success(`${coupon.id.toUpperCase()} kuponu başarıyla eklendi!`);
+      await setDoc(doc(db, 'coupons', cleanCoupon.id), cleanCoupon);
+      toast.success(`${cleanCoupon.id} kuponu başarıyla eklendi!`);
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, `coupons/${coupon.id}`);
     }
   };
 
   const toggleCouponStatus = async (id: string, isActive: boolean) => {
+    if (useLocalFallback) {
+      saveFallbackCoupons(coupons.map(c => c.id === id ? { ...c, isActive } : c));
+      toast.success(`Kupon ${isActive ? 'aktif' : 'pasif'} hale getirildi.`);
+      return;
+    }
     try {
       await updateDoc(doc(db, 'coupons', id), { isActive });
       toast.success(`Kupon ${isActive ? 'aktif' : 'pasif'} hale getirildi.`);
@@ -865,6 +1284,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const removeCoupon = async (id: string) => {
+    if (useLocalFallback) {
+      saveFallbackCoupons(coupons.filter(c => c.id !== id));
+      toast.success('Kupon başarıyla silindi.');
+      return;
+    }
     try {
       await deleteDoc(doc(db, 'coupons', id));
       toast.success('Kupon başarıyla silindi.');
@@ -876,6 +1300,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   return (
     <CartContext.Provider
       value={{
+        useLocalFallback,
+        setUseLocalFallback,
         menuItems,
         addMenuItem,
         removeMenuItem,

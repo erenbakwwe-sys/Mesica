@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { cart, callWaiter } = useCart();
+  const { cart, callWaiter, useLocalFallback, setUseLocalFallback } = useCart();
   const [waiterCalled, setWaiterCalled] = useState(false);
 
   const links = [
@@ -35,13 +35,29 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-amber-950/15 bg-[#0e0d0b]/80 backdrop-blur-md text-[#f5f2eb]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
             <span className="text-lg sm:text-xl font-black text-white tracking-widest flex items-center gap-2">
               <span className="text-[#dcae61] text-2xl font-black drop-shadow-[0_0_10px_rgba(220,174,97,0.4)]">▲</span> 
               FLUX ZONE
             </span>
           </Link>
+          {useLocalFallback && (
+            <button
+              onClick={() => {
+                if (window.confirm("Çevrimdışı/Yerel Mod etkin. Sunucu kotası dolduğunda veya bağlantı koptuğunda veri kaybı yaşamamanız için otomatik açıldı. Yeniden çevrimiçi bağlanmayı denemek istiyor musunuz?")) {
+                  localStorage.removeItem('firebase_quota_fallback');
+                  setUseLocalFallback(false);
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse hover:bg-amber-500/20 transition-all cursor-pointer"
+              title="Yerel Depolama Modu Aktif. Tıklayarak çevrimiçi modunu tekrar deneyebilirsiniz."
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-ping" />
+              Yerel Mod
+            </button>
+          )}
         </div>
 
         {/* Desktop Nav */}
