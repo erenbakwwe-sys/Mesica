@@ -15,7 +15,7 @@ export function Navbar() {
   const links = [
     { name: 'Ana Sayfa', path: '/' },
     { name: 'Menü', path: '/menu' },
-    { name: 'Siparişlerim', path: '/order' },
+    { name: 'Hesabım', path: '/order' },
     { name: 'Admin', path: '/admin' },
   ];
 

@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Clock, CheckCircle2, ChefHat, LogOut, Play, Check, ListOrdered, UtensilsCrossed, BellRing, History, LayoutDashboard, QrCode } from 'lucide-react';
+import { Clock, CheckCircle2, ChefHat, Play, Check, ListOrdered, UtensilsCrossed, BellRing, History, LayoutDashboard, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AdminLogin } from './AdminLogin';
 import { AdminMenu } from './AdminMenu';
 import { AdminTables } from './AdminTables';
 import { AdminHistory } from './AdminHistory';
@@ -14,32 +13,10 @@ import { AdminQRCodes } from './AdminQRCodes';
 
 export function Admin() {
   const { orders, updateOrderStatus, waiterCalls, resolveWaiterCall } = useCart();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'menu' | 'waiter' | 'history' | 'qr'>('dashboard');
   
   const activeWaiterCalls = waiterCalls ? waiterCalls.filter(c => !c.resolved) : [];
   const newOrdersCount = orders ? orders.filter(o => o.status === 'Yeni' || o.status === 'Ödeme Bekleniyor').length : 0;
-
-  useEffect(() => {
-    const loggedIn = sessionStorage.getItem('izmir_deniz_admin_logged_in');
-    if (loggedIn === 'true') {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  const handleLogin = () => {
-    setIsLoggedIn(true);
-    sessionStorage.setItem('izmir_deniz_admin_logged_in', 'true');
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    sessionStorage.removeItem('izmir_deniz_admin_logged_in');
-  };
-
-  if (!isLoggedIn) {
-    return <AdminLogin onLogin={handleLogin} />;
-  }
 
   return (
     <motion.div 
@@ -125,10 +102,6 @@ export function Admin() {
               QR Kodlar
             </Button>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="text-slate-500 shrink-0">
-            <LogOut className="mr-2 h-4 w-4" />
-            Çıkış Yap
-          </Button>
         </div>
       </div>
 

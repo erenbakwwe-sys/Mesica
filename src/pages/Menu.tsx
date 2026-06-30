@@ -3,14 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../components/ui/card';
-import { Plus, Minus, ShoppingCart, ChevronRight, AlertCircle, QrCode } from 'lucide-react';
+import { ChevronRight, AlertCircle, QrCode, Receipt, BellRing } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 export function Menu() {
-  const { menuItems, cart, addToCart, removeFromCart, total, orders } = useCart();
+  const { menuItems, orders, callWaiter } = useCart();
   const [activeCategory, setActiveCategory] = useState<string>('Tümü');
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
+  const [waiterCalled, setWaiterCalled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,8 +25,10 @@ export function Menu() {
     }
   }, [urlTable]);
 
-  // Check if there is a pending order for this table
-  const pendingOrder = currentTable ? orders.find(o => o.table === currentTable && o.status === 'Ödeme Bekleniyor') : undefined;
+  // Calculate combined unpaid total for this table
+  const tableOrders = currentTable ? orders.filter(o => o.table === currentTable && o.status !== 'Ödendi') : [];
+  const combinedTotal = tableOrders.reduce((sum, o) => sum + (o.remainingAmount !== undefined ? o.remainingAmount : o.total), 0);
+  const hasActiveBill = combinedTotal > 0;
 
   const categories = ['Tümü', ...Array.from(new Set(menuItems.map((item) => item.category)))];
 
@@ -33,18 +36,18 @@ export function Menu() {
     ? menuItems 
     : menuItems.filter((item) => item.category === activeCategory);
 
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-
   const toggleExpand = (id: string) => {
     setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleAddToCart = (itemId: string) => {
+  const handleCallWaiter = () => {
     if (!currentTable) {
-      toast.error("Lütfen sipariş vermek için masanızdaki QR kodu okutun.");
+      toast.error("Lütfen garson çağırmak için masanızdaki QR kodu okutun.");
       return;
     }
-    addToCart(itemId);
+    callWaiter(currentTable);
+    setWaiterCalled(true);
+    setTimeout(() => setWaiterCalled(false), 3000);
   };
 
   return (
@@ -53,12 +56,12 @@ export function Menu() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
-      className="flex flex-col gap-8 pb-24" // Added pb-24 for the sticky bottom bar
+      className="flex flex-col gap-8 pb-28"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Dijital Menü</h1>
-          <p className="text-slate-500 mt-1">Lezzetlerimizi keşfedin ve siparişinizi oluşturun.</p>
+          <p className="text-slate-500 mt-1">Geniş menümüzü inceleyin. Siparişleriniz masanızda garsonlarımızca alınacaktır.</p>
         </div>
         
         <div className="flex flex-wrap gap-2">
@@ -76,33 +79,59 @@ export function Menu() {
         </div>
       </div>
 
-      {!currentTable && (
+      {!currentTable ? (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 shadow-sm"
+          className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex items-start gap-4 shadow-sm"
         >
           <QrCode className="text-amber-600 h-6 w-6 shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-amber-900">QR Kod Okutulmadı</h3>
-            <p className="text-amber-700 text-sm mt-1">
-              Sipariş verebilmek ve garson çağırabilmek için lütfen masanızdaki QR kodu telefonunuzun kamerasıyla okutun.
+            <h3 className="font-semibold text-amber-900 text-base">QR Kod Okutulmadı</h3>
+            <p className="text-amber-700 text-sm mt-1 leading-relaxed">
+              Hesabınızı görebilmek ve masanıza garson çağırabilmek için lütfen masanızdaki QR kodu telefonunuzun kamerasıyla okutun.
             </p>
           </div>
         </motion.div>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-50 border border-blue-100 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+        >
+          <div className="flex items-start gap-4">
+            <Receipt className="text-blue-600 h-6 w-6 shrink-0 mt-1" />
+            <div>
+              <h3 className="font-bold text-blue-900 text-lg">{currentTable} – Bilgilendirme</h3>
+              <p className="text-blue-700 text-sm mt-1 leading-relaxed max-w-xl">
+                Siparişlerinizi her zamanki gibi garsonumuz gelip masanızda alacaktır. Yemek sonrası hesabınızı dilediğiniz an bu ekrandan, dilediğiniz şekilde sanal POS ile ödeyebilirsiniz.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant={waiterCalled ? "default" : "outline"}
+            className={`rounded-full shrink-0 h-11 px-5 transition-all ${waiterCalled ? 'bg-green-600 hover:bg-green-700 text-white border-none' : 'border-blue-200 text-blue-600 hover:bg-blue-100 bg-white'}`}
+            onClick={handleCallWaiter}
+            disabled={waiterCalled}
+          >
+            <BellRing className="mr-2 h-4 w-4" />
+            {waiterCalled ? 'Garson Çağrıldı' : 'Garsonu Çağır'}
+          </Button>
+        </motion.div>
       )}
 
-      {pendingOrder && (
+      {hasActiveBill && (
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3"
+          className="bg-green-50 border border-green-200 rounded-xl p-5 flex items-start gap-3 shadow-sm"
         >
-          <AlertCircle className="text-blue-600 h-6 w-6 shrink-0 mt-0.5" />
+          <AlertCircle className="text-green-600 h-6 w-6 shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-semibold text-blue-900">Ödenmeyi Bekleyen Hesap Var</h3>
-            <p className="text-blue-700 text-sm mt-1">
-              Masada ortak bir hesap oluşturulmuş. Kalan Tutar: <span className="font-bold">₺{(pendingOrder.remainingAmount || 0).toFixed(2)}</span>
+            <h3 className="font-semibold text-green-900 text-base">Masanızda Ödenmeyi Bekleyen Hesap Var</h3>
+            <p className="text-green-700 text-sm mt-1">
+              Masanıza girilen aktif siparişler bulunuyor. Kalan Toplam Tutar: <span className="font-bold text-lg text-green-900">₺{combinedTotal.toFixed(2)}</span>.
+              Aşağıdaki butona veya "Hesabım" sekmesine tıklayarak sanal POS ile güvenli ödeme yapabilirsiniz.
             </p>
           </div>
         </motion.div>
@@ -110,31 +139,28 @@ export function Menu() {
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {filteredItems.map((item, index) => {
-          const cartItem = cart.find((c) => c.id === item.id);
-          const quantity = cartItem?.quantity || 0;
-
           return (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
+              transition={{ duration: 0.4, delay: index * 0.05 }}
             >
               <Card className="overflow-hidden h-full flex flex-col border-none shadow-sm hover:shadow-md transition-all">
-                <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+                <div className="aspect-[4/3] overflow-hidden bg-slate-100 relative">
                   <img
                     src={item.image}
                     alt={item.name}
                     className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                     referrerPolicy="no-referrer"
                   />
-                </div>
-                <CardHeader className="p-5 pb-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <CardTitle className="text-xl">{item.name}</CardTitle>
-                    <span className="font-semibold text-blue-600">₺{item.price}</span>
+                  <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm shadow-md rounded-full px-4 py-1.5 font-bold text-blue-600 text-sm">
+                    ₺{item.price}
                   </div>
-                  <CardDescription className="mt-2 text-sm text-slate-500">
+                </div>
+                <CardHeader className="p-5 flex-1">
+                  <CardTitle className="text-xl text-slate-900">{item.name}</CardTitle>
+                  <CardDescription className="mt-2 text-sm text-slate-500 leading-relaxed">
                     {item.description.length > 80 && !expandedItems[item.id] ? (
                       <>
                         {item.description.slice(0, 80)}...
@@ -160,37 +186,6 @@ export function Menu() {
                     )}
                   </CardDescription>
                 </CardHeader>
-                <CardFooter className="p-5 pt-4 mt-auto">
-                  {quantity > 0 ? (
-                    <div className="flex w-full items-center justify-between rounded-full bg-blue-50 p-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-700"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <span className="font-semibold text-blue-900 w-8 text-center">{quantity}</span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-200 hover:text-blue-700"
-                        onClick={() => handleAddToCart(item.id)}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button 
-                      className="w-full rounded-full bg-slate-900 text-white hover:bg-slate-800" 
-                      onClick={() => handleAddToCart(item.id)}
-                    >
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Sepete Ekle
-                    </Button>
-                  )}
-                </CardFooter>
               </Card>
             </motion.div>
           );
@@ -198,7 +193,7 @@ export function Menu() {
       </div>
 
       <AnimatePresence>
-        {(cart.length > 0 || pendingOrder) && (
+        {hasActiveBill && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -207,24 +202,15 @@ export function Menu() {
           >
             <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                {pendingOrder ? (
-                  <>
-                    <span className="text-sm text-blue-600 font-medium">Ortak Hesap</span>
-                    <span className="text-xl font-bold text-blue-600">Kalan: ₺{(pendingOrder.remainingAmount || 0).toFixed(2)}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm text-slate-500 font-medium">{cartItemCount} ürün</span>
-                    <span className="text-xl font-bold text-blue-600">₺{total.toFixed(2)}</span>
-                  </>
-                )}
+                <span className="text-xs text-slate-500 font-medium">Masa Güncel Hesabı</span>
+                <span className="text-xl font-bold text-blue-600">₺{combinedTotal.toFixed(2)}</span>
               </div>
               <Button 
                 size="lg" 
-                className={`rounded-full px-8 ${pendingOrder ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                onClick={() => navigate(pendingOrder ? '/payment' : '/order')}
+                className="rounded-full px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                onClick={() => navigate('/order')}
               >
-                {pendingOrder ? 'Ödemeye Katıl' : 'Sepete Git'}
+                Hesabı Öde
                 <ChevronRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
