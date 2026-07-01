@@ -11,6 +11,7 @@ export function AdminHistory() {
   const { orders, deleteOrder } = useCart();
   const [searchTerm, setSearchTerm] = useState('');
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
+  const [visibleLimit, setVisibleLimit] = useState(30);
   
   // Filter only paid orders
   const pastOrders = orders.filter(o => o.status === 'Ödendi');
@@ -21,8 +22,14 @@ export function AdminHistory() {
     o.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Sort filtered orders by date descending
+  const sortedPastOrders = [...filteredOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  // Slice based on visibleLimit
+  const visibleOrdersList = sortedPastOrders.slice(0, visibleLimit);
+
   // Group by table
-  const groupedOrders = filteredOrders.reduce((acc, order) => {
+  const groupedOrders = visibleOrdersList.reduce((acc, order) => {
     if (!acc[order.table]) {
       acc[order.table] = [];
     }
@@ -148,6 +155,16 @@ export function AdminHistory() {
               </div>
             </div>
           ))}
+          {sortedPastOrders.length > visibleLimit && (
+            <div className="flex justify-center pt-4">
+              <Button
+                onClick={() => setVisibleLimit(prev => prev + 50)}
+                className="button-3d-primary rounded-full px-8 h-11 text-xs font-bold uppercase tracking-widest"
+              >
+                Daha Fazla Göster ({sortedPastOrders.length - visibleLimit} sipariş daha var)
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

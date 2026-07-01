@@ -220,7 +220,7 @@ const sendPushNotification = async (title: string, body: string) => {
 };
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [useLocalFallback, setUseLocalFallback] = useState<boolean>(() => localStorage.getItem('firebase_quota_fallback') === 'true');
+  const [useLocalFallback, setUseLocalFallback] = useState<boolean>(false);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [waiterCalls, setWaiterCalls] = useState<WaiterCall[]>([]);
@@ -236,23 +236,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     syncChannel?.postMessage({ type: 'PLAY_SOUND', sound: soundName });
   };
 
-  // Register global onFirestoreError callback to handle quota limit exceeded
+  // Clean up any previously stored fallback keys on load
+  useEffect(() => {
+    localStorage.removeItem('firebase_quota_fallback');
+  }, []);
+
+  // Register global onFirestoreError callback
   useEffect(() => {
     globalOnFirestoreError = (err, opType, path) => {
       const errMsg = err instanceof Error ? err.message : String(err);
-      if (
-        errMsg.toLowerCase().includes('quota') || 
-        errMsg.toLowerCase().includes('limit exceeded') || 
-        errMsg.toLowerCase().includes('billing') || 
-        errMsg.toLowerCase().includes('permission')
-      ) {
-        if (localStorage.getItem('firebase_quota_fallback') !== 'true') {
-          localStorage.setItem('firebase_quota_fallback', 'true');
-          setUseLocalFallback(true);
-          syncChannel?.postMessage({ type: 'FALLBACK_TOGGLED', value: true });
-          toast.success("Kesintisiz hizmet için Çevrimdışı / Yerel Depolama (Hızlı Mod) aktif edildi! ✨", { duration: 6000 });
-        }
-      }
+      console.warn(`Firestore Error caught in global handler (Operation: ${opType}, Path: ${path}):`, errMsg);
     };
     return () => {
       globalOnFirestoreError = null;
